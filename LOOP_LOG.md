@@ -203,3 +203,18 @@
 - Open questions for user: (1) chat threads client-side vs server
   persistence for MVP; (2) delete old top-level routes immediately vs keep
   during transition; (3) landing placeholder content level.
+
+## Plan-mode parallel tracks (2026-10-24, uncommitted plan)
+- Split plan-mode MVP into 3 track docs under .scratch/erp-fish/tracks/:
+  track-1 (frontend: auth pages, onboarding wizard, landing placeholder,
+  /home shell + sidebar, planning chat UI; owns apps/web only),
+  track-2 (backend: JWT auth, onboarding, chat + threads API, seam D;
+  owns apps/api + packages/shared), track-3 (reconciliation: merge
+  backend-first, rebase frontend, single-stack e2e, tag plan-mode-e2e).
+- Out of plan-mode scope: agent execution UI, jobs scoping, memory CRUD,
+  settings forms, landing design, chat streaming.
+- Frozen contract shared by both lanes (auth 5 routes + chat 3 routes,
+  cookie session, keyless-degraded 200s). Ownership rule: only track 2
+  edits shared/; gaps logged in LOOP_LOG for track 3.
+- Ports: backend lane defaults (:3000/:3001); frontend lane worktree
+  ../erp-fish-frontend on frontend/plan-mode (api :3101, web :3002).
