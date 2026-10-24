@@ -99,3 +99,28 @@ ignored scaffold files — the temp ignore in `eslint.config.mjs` stays.
 Gates green + all pages render + redirect chain behaves + chat UI sends
 the exact contract shapes (verify payloads in devtools). Live backend
 verification happens in Track 3. Commit on `frontend/plan-mode`, push.
+
+## Notes for the agent executing this track (read first)
+- **Do not "fix" the component scaffold.** `src/components/ui/**` plus
+  `src/hooks/use-mobile.ts`, `src/hooks/use-highlighted-code.ts`, and
+  `src/lib/highlighter.tsx` are covered by a temporary ignore in
+  `apps/web/eslint.config.mjs`. That ignore stays. Never edit those
+  files; if lint or react-doctor flags them, they are out of scope —
+  fix only files you created or touched.
+- **This is not the Next.js you know.** Before writing any Next.js code,
+  read the relevant guide in `apps/web/node_modules/next/dist/docs/`.
+  Concretely: every async data access must render inside `<Suspense>`
+  with a fallback (see the existing `HomeContent` / `JobPageContent`
+  pattern) — never add `export const instant = false` to silence
+  blocking-route errors.
+- **Ownership is a hard boundary.** You may read `packages/shared` and
+  `apps/api` for reference, but edit `apps/web/**` only. If a schema or
+  endpoint gap blocks you, mock around it, finish the track, and log the
+  gap in `LOOP_LOG.md` under `## Track 1 contract gaps` — Track 3
+  resolves it. Do not invent contract changes unilaterally.
+- **Gates before done:** `bun run check` from repo root, plus
+  `bunx react-doctor@latest --verbose` from `apps/web` with zero findings
+  in your files. No `console.log`, no hardcoded strings/numbers, no `as`
+  casts, no new dependencies without asking the human.
+- **Branch and push:** all work commits on `frontend/plan-mode`; push the
+  branch when the track is done so Track 3 can rebase it.
