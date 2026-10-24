@@ -24,7 +24,7 @@ import {
 import { findJobRow, findQuestionRow, openDb } from "./db";
 import { MISSING_DEMO_CONFIG_MESSAGE, createDemoAgent } from "./demoAgent";
 import { DEMO_AGENT_ON, env } from "./env";
-import { createInvoiceLlm } from "./llm";
+import { createInvoiceLlm } from "./create-invoice-llm";
 import { logger } from "./logger";
 import { answerQuestion, createJob, getJob, listMemory } from "./orchestrator";
 import { parseInvoiceJson, parseInvoicePdf, parseInvoiceText } from "./parse";
@@ -81,7 +81,9 @@ const app = new Hono()
   .post(API_PATHS.parse, async (c) => {
     logger.info({ route: API_PATHS.parse }, PARSE_LOG_MESSAGE);
     const contentType: string | undefined = c.req.header(CONTENT_TYPE_HEADER);
-    if (contentType?.includes(PDF_MIME) === true || contentType?.includes(OCTET_MIME) === true) {
+    const isPdf: boolean = contentType?.includes(PDF_MIME) ?? false;
+    const isOctet: boolean = contentType?.includes(OCTET_MIME) ?? false;
+    if (isPdf || isOctet) {
       const buffer: ArrayBuffer = await c.req.arrayBuffer();
       return c.json(await parseInvoicePdf(new Uint8Array(buffer), requireLlm()));
     }

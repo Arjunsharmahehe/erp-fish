@@ -49,8 +49,6 @@ const RATE_LABEL = "Rate:" as const;
 
 const OUTPUT_PATH = "tests/fixtures/demo-invoice.pdf" as const;
 const FIRST_OBJECT_NUMBER = 1 as const;
-const STEP_ONE = 1 as const;
-const MISSING_OBJECT_MESSAGE = "missing_pdf_object" as const;
 
 const textLines: string[] = [
   [INVOICE_LABEL, DEMO_INVOICE_NO].join(SPACE),
@@ -78,12 +76,8 @@ const objects: string[] = [
 let pdf: string = PDF_HEADER + NEWLINE;
 const offsets: number[] = [];
 const encoder = new TextEncoder();
-for (let index = 0; index < objects.length; index += STEP_ONE) {
+for (const [index, objBody] of objects.entries()) {
   offsets.push(encoder.encode(pdf).length);
-  const objBody: string | undefined = objects[index];
-  if (objBody === undefined) {
-    throw new Error(MISSING_OBJECT_MESSAGE);
-  }
   pdf += String(index + FIRST_OBJECT_NUMBER) + OBJ_OPEN + NEWLINE + objBody + NEWLINE + OBJ_CLOSE + NEWLINE;
 }
 

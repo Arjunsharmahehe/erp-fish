@@ -88,17 +88,20 @@ const FrappeListResponseSchema = z.object({
 });
 
 const FrappeDocResponseSchema = z.object({
-  data: z.object({ [NAME_FIELD]: z.string() }).passthrough(),
+  data: z.object({ [NAME_FIELD]: z.string() }).loose(),
 });
 
-async function apiFetch(path: string, sid: string, init?: RequestInit): Promise<Response> {
-  const headers: Record<string, string> = { [COOKIE_HEADER]: sid };
-  if (init?.headers !== undefined) {
-    Object.assign(headers, init.headers);
+async function apiFetch(request: { path: string; sid: string; init?: RequestInit }): Promise<Response> {
+  const headers: Record<string, string> = { [COOKIE_HEADER]: request.sid };
+  if (request.init?.headers !== undefined) {
+    Object.assign(headers, request.init.headers);
   }
-  const res: Response = await fetch(`${env.SEED_ERP_BASE_URL}${path}`, { ...init, headers });
+  const res: Response = await fetch(`${env.SEED_ERP_BASE_URL}${request.path}`, {
+    ...request.init,
+    headers,
+  });
   if (!res.ok) {
-    throw new SeedHttpError(res.status, path);
+    throw new SeedHttpError(res.status, request.path);
   }
   return res;
 }
@@ -120,65 +123,99 @@ async function login(): Promise<string> {
   return sid;
 }
 
-async function ensureDoc(
-  sid: string,
-  doctype: string,
-  keyField: string,
-  keyValue: string,
-  payload: Record<string, string | number>,
-): Promise<string> {
+async function ensureDoc(request: {
+  sid: string;
+  doctype: string;
+  keyField: string;
+  keyValue: string;
+  payload: Record<string, string | number>;
+}): Promise<string> {
   const filters: string = encodeURIComponent(
-    JSON.stringify([[[keyField, FILTER_EQUALS, keyValue]]]),
+    JSON.stringify([[[request.keyField, FILTER_EQUALS, request.keyValue]]]),
   );
   const fields: string = encodeURIComponent(JSON.stringify([NAME_FIELD]));
-  const found: Response = await apiFetch(
-    `${RESOURCE_PATH}/${doctype}?filters=${filters}&fields=${fields}`,
-    sid,
-  );
+  const found: Response = await apiFetch({
+    path: `${RESOURCE_PATH}/${request.doctype}?filters=${filters}&fields=${fields}`,
+    sid: request.sid,
+  });
   const listed = FrappeListResponseSchema.parse(await found.json());
-  const existing = listed.data[0];
-  if (existing !== undefined) {
-    logger.info({ doctype, name: existing.name }, SEED_LOG_MESSAGE);
+  if (listed.data.length > 0) {
+    const existing = listed.data[0];
+    logger.info({ doctype: request.doctype, name: existing.name }, SEED_LOG_MESSAGE);
     return existing.name;
   }
-  const created: Response = await apiFetch(`${RESOURCE_PATH}/${doctype}`, sid, {
-    method: METHOD_POST,
-    headers: { [CONTENT_TYPE_HEADER]: JSON_MIME },
-    body: JSON.stringify(payload),
+  const created: Response = await apiFetch({
+    path: `${RESOURCE_PATH}/${request.doctype}`,
+    sid: request.sid,
+    init: {
+      method: METHOD_POST,
+      headers: { [CONTENT_TYPE_HEADER]: JSON_MIME },
+      body: JSON.stringify(request.payload),
+    },
   });
   const doc = FrappeDocResponseSchema.parse(await created.json());
-  logger.info({ doctype, name: doc.data.name }, SEED_LOG_MESSAGE);
+  logger.info({ doctype: request.doctype, name: doc.data.name }, SEED_LOG_MESSAGE);
   return doc.data.name;
 }
 
 const sid: string = await login();
-const companyName: string = await ensureDoc(sid, DOCTYPE_COMPANY, FIELD_COMPANY_NAME, DEMO_COMPANY_NAME, {
-  [FIELD_COMPANY_NAME]: DEMO_COMPANY_NAME,
-  [FIELD_ABBR]: DEMO_COMPANY_ABBR,
-  [FIELD_DEFAULT_CURRENCY]: DEFAULT_CURRENCY,
-  [FIELD_COUNTRY]: DEFAULT_COUNTRY,
+const companyName: string = await ensureDoc({
+  sid,
+  doctype: DOCTYPE_COMPANY,
+  keyField: FIELD_COMPANY_NAME,
+  keyValue: DEMO_COMPANY_NAME,
+  payload: {
+    [FIELD_COMPANY_NAME]: DEMO_COMPANY_NAME,
+    [FIELD_ABBR]: DEMO_COMPANY_ABBR,
+    [FIELD_DEFAULT_CURRENCY]: DEFAULT_CURRENCY,
+    [FIELD_COUNTRY]: DEFAULT_COUNTRY,
+  },
 });
-await ensureDoc(sid, DOCTYPE_SUPPLIER, FIELD_SUPPLIER_NAME, DEMO_SUPPLIER, {
-  [FIELD_SUPPLIER_NAME]: DEMO_SUPPLIER,
-  [FIELD_SUPPLIER_TYPE]: DEFAULT_SUPPLIER_TYPE,
+await ensureDoc({
+  sid,
+  doctype: DOCTYPE_SUPPLIER,
+  keyField: FIELD_SUPPLIER_NAME,
+  keyValue: DEMO_SUPPLIER,
+  payload: {
+    [FIELD_SUPPLIER_NAME]: DEMO_SUPPLIER,
+    [FIELD_SUPPLIER_TYPE]: DEFAULT_SUPPLIER_TYPE,
+  },
 });
-await ensureDoc(sid, DOCTYPE_CUSTOMER, FIELD_CUSTOMER_NAME, DEMO_CUSTOMER, {
-  [FIELD_CUSTOMER_NAME]: DEMO_CUSTOMER,
-  [FIELD_CUSTOMER_TYPE]: DEFAULT_CUSTOMER_TYPE,
-  [FIELD_CUSTOMER_GROUP]: DEFAULT_CUSTOMER_GROUP,
+await ensureDoc({
+  sid,
+  doctype: DOCTYPE_CUSTOMER,
+  keyField: FIELD_CUSTOMER_NAME,
+  keyValue: DEMO_CUSTOMER,
+  payload: {
+    [FIELD_CUSTOMER_NAME]: DEMO_CUSTOMER,
+    [FIELD_CUSTOMER_TYPE]: DEFAULT_CUSTOMER_TYPE,
+    [FIELD_CUSTOMER_GROUP]: DEFAULT_CUSTOMER_GROUP,
+  },
 });
 for (const itemCode of [DEMO_ITEM_1, DEMO_ITEM_2]) {
-  await ensureDoc(sid, DOCTYPE_ITEM, FIELD_ITEM_CODE, itemCode, {
-    [FIELD_ITEM_CODE]: itemCode,
-    [FIELD_ITEM_NAME]: itemCode,
-    [FIELD_ITEM_GROUP]: DEFAULT_ITEM_GROUP,
-    [FIELD_STOCK_UOM]: DEFAULT_STOCK_UOM,
-    [FIELD_IS_STOCK_ITEM]: IS_STOCK_ITEM,
+  await ensureDoc({
+    sid,
+    doctype: DOCTYPE_ITEM,
+    keyField: FIELD_ITEM_CODE,
+    keyValue: itemCode,
+    payload: {
+      [FIELD_ITEM_CODE]: itemCode,
+      [FIELD_ITEM_NAME]: itemCode,
+      [FIELD_ITEM_GROUP]: DEFAULT_ITEM_GROUP,
+      [FIELD_STOCK_UOM]: DEFAULT_STOCK_UOM,
+      [FIELD_IS_STOCK_ITEM]: IS_STOCK_ITEM,
+    },
   });
 }
-await ensureDoc(sid, DOCTYPE_WAREHOUSE, FIELD_WAREHOUSE_NAME, DEMO_WAREHOUSE, {
-  [FIELD_WAREHOUSE_NAME]: DEMO_WAREHOUSE,
-  [FIELD_COMPANY]: companyName,
+await ensureDoc({
+  sid,
+  doctype: DOCTYPE_WAREHOUSE,
+  keyField: FIELD_WAREHOUSE_NAME,
+  keyValue: DEMO_WAREHOUSE,
+  payload: {
+    [FIELD_WAREHOUSE_NAME]: DEMO_WAREHOUSE,
+    [FIELD_COMPANY]: companyName,
+  },
 });
 
 logger.info({ company: companyName }, SEED_DONE_MESSAGE);

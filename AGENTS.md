@@ -87,11 +87,13 @@ Shared Zod schemas live in `packages/shared` only — never duplicated per app.
 - In `apps/web`, use components from the `ui` directory and design tokens.
   No raw colors or arbitrary Tailwind values.
 - Never loosen lint config to pass. Ask first.
-- Lint status (Oct 2026): `tsc --noEmit` typecheck is the active TS gate and
-  is green. Full ESLint execution on TS files is blocked upstream —
+- Lint status (Oct 2026): TypeScript is pinned to 6.0.3 because
   `typescript-eslint` refuses the TS 7 native API (tracks TS >=7.1 support).
-  The configs in `eslint.base.mjs` are the target state; re-enabling is just
-  upgrading `typescript-eslint`, no config rewrite needed.
+  `bun run check` (typecheck + ESLint on TS files) is green. The `ui/`
+  scaffold ignore in `apps/web/eslint.config.mjs` is temporary — remove it
+  once the scaffold is cleaned up (tracked in LOOP_LOG). Re-upgrading to TS 7
+  later is a version bump plus a `typescript-eslint` upgrade, no config
+  rewrite needed.
 
 ## 16. Hono routes
 Register API routes by chaining on one `Hono` instance

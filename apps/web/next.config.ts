@@ -14,4 +14,6 @@ const nextConfig: NextConfig = {
   },
 };
 
+// The framework fixes this filename, so the export keeps its descriptive name.
+// eslint-disable-next-line llm-core/filename-match-export
 export default nextConfig;

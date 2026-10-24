@@ -5,10 +5,31 @@
 import llmCore from "eslint-plugin-llm-core";
 import tseslint from "typescript-eslint";
 
+// Block name typescript-eslint uses for its parser/plugin setup. Web's config
+// receives an equivalent block from eslint-config-next/typescript (a separate
+// plugin instance), and flat config forbids defining the same plugin key
+// twice — so web filters these blocks out (see apps/web/eslint.config.mjs).
+// Filtering removes no rules: the plugin/parser setup is identical.
+export const TSESLINT_BASE_BLOCK = "typescript-eslint/base";
+const TS_FILES = ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"];
+const JS_FILES = ["**/*.js", "**/*.mjs", "**/*.cjs"];
+
+// Type-aware sets ship without `files` scoping, which makes their rules run
+// (and crash) on the plain-JS config files ESLint also lints. Scope them to
+// TS inputs; TS files see the identical rule set as before.
+function scopedTo(configs, files) {
+  const list = Array.isArray(configs) ? configs : [configs];
+  return list.map((config) => ({ ...config, files: config.files ?? files }));
+}
+
+// Minimum prose required when `ts-expect-error` is used as an escape hatch.
+const MIN_TSEXPECT_DESCRIPTION_LENGTH = 10;
+
 export function baseTypeScript(tsconfigRootDir) {
   return [
-    ...tseslint.configs.strictTypeChecked,
-    ...tseslint.configs.stylisticTypeChecked,
+    ...scopedTo(tseslint.configs.strictTypeChecked, TS_FILES),
+    ...scopedTo(tseslint.configs.stylisticTypeChecked, TS_FILES),
+    ...scopedTo(tseslint.configs.disableTypeChecked, JS_FILES),
     {
       files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
       languageOptions: {
@@ -37,7 +58,7 @@ export function baseTypeScript(tsconfigRootDir) {
             "ts-expect-error": "allow-with-description",
             "ts-ignore": true,
             "ts-nocheck": true,
-            minimumDescriptionLength: 10,
+            minimumDescriptionLength: MIN_TSEXPECT_DESCRIPTION_LENGTH,
           },
         ],
         "no-restricted-syntax": [

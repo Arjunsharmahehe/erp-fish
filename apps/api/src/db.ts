@@ -1,16 +1,11 @@
 import { Database } from "bun:sqlite";
-import * as z from "zod";
 import {
   AgentResultIdsSchema,
   InvoiceJSONSchema,
   JobInputSchema,
-  JobStatusSchema,
   MemoryEntrySchema,
   QUESTION_STATUS_ANSWERED,
-  QuestionStatusSchema,
   TASK_STATUS_DONE,
-  TaskKindSchema,
-  TaskStatusSchema,
   type AgentResultIds,
   type JobInput,
   type JobStatus,
@@ -19,43 +14,21 @@ import {
   type TaskKind,
   type TaskStatus,
 } from "shared";
+import {
+  CompletedOutputRowSchema,
+  JobRowSchema,
+  MemoryAnswerRowSchema,
+  QuestionRowSchema,
+  TaskRowSchema,
+  type JobRow,
+  type ParsedInvoice,
+  type QuestionRow,
+  type TaskRow,
+} from "./rows";
 
 export const IN_MEMORY_DB_PATH = ":memory:" as const;
 
-const JobRowSchema = z.object({
-  id: z.string(),
-  erp_host: z.string(),
-  profile_id: z.string(),
-  invoice_json: z.string(),
-  instruction: z.string(),
-  status: JobStatusSchema,
-  result_ids: z.string().nullable(),
-  created_at: z.string(),
-});
-
-export type JobRow = z.infer<typeof JobRowSchema>;
-
-const TaskRowSchema = z.object({
-  id: z.string(),
-  job_id: z.string(),
-  kind: TaskKindSchema,
-  status: TaskStatusSchema,
-  agent_run_id: z.string().nullable(),
-  output_id: z.string().nullable(),
-});
-
-export type TaskRow = z.infer<typeof TaskRowSchema>;
-
-const QuestionRowSchema = z.object({
-  id: z.string(),
-  job_id: z.string(),
-  q_norm: z.string(),
-  q_raw: z.string(),
-  answer: z.string().nullable(),
-  status: QuestionStatusSchema,
-});
-
-export type QuestionRow = z.infer<typeof QuestionRowSchema>;
+export type { JobRow, QuestionRow, TaskRow } from "./rows";
 
 const SCHEMA_JOBS = `CREATE TABLE IF NOT EXISTS jobs(
 id TEXT PRIMARY KEY,
@@ -116,12 +89,7 @@ const QUERY_FIND_MEMORY_ANSWER =
   "SELECT answer FROM memory WHERE erp_host = ? AND q_norm = ?" as const;
 const QUERY_LIST_MEMORY = "SELECT erp_host, q_norm, answer FROM memory WHERE erp_host = ?" as const;
 
-const CompletedOutputRowSchema = z.object({
-  output_id: z.string().nullable(),
-  invoice_json: z.string(),
-});
-
-function safeParseJson(text: string): z.infer<typeof InvoiceJSONSchema> | undefined {
+function safeParseJson(text: string): ParsedInvoice | undefined {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -137,10 +105,10 @@ function safeParseJson(text: string): z.infer<typeof InvoiceJSONSchema> | undefi
 
 export function openDb(path: string = IN_MEMORY_DB_PATH): Database {
   const db = new Database(path, { create: true });
-  db.exec(SCHEMA_JOBS);
-  db.exec(SCHEMA_TASKS);
-  db.exec(SCHEMA_QUESTIONS);
-  db.exec(SCHEMA_MEMORY);
+  db.run(SCHEMA_JOBS);
+  db.run(SCHEMA_TASKS);
+  db.run(SCHEMA_QUESTIONS);
+  db.run(SCHEMA_MEMORY);
   return db;
 }
 
@@ -165,13 +133,16 @@ export function insertJob(
   );
 }
 
-export function updateJobStatus(db: Database, jobId: string, status: JobStatus): void {
-  db.query(QUERY_UPDATE_JOB_STATUS).run(status, jobId);
+export function updateJobStatus(db: Database, update: { jobId: string; status: JobStatus }): void {
+  db.query(QUERY_UPDATE_JOB_STATUS).run(update.status, update.jobId);
 }
 
-export function updateJobResultIds(db: Database, jobId: string, resultIds: AgentResultIds): void {
-  const parsed = AgentResultIdsSchema.parse(resultIds);
-  db.query(QUERY_UPDATE_JOB_RESULT_IDS).run(JSON.stringify(parsed), jobId);
+export function updateJobResultIds(
+  db: Database,
+  update: { jobId: string; resultIds: AgentResultIds },
+): void {
+  const parsed = AgentResultIdsSchema.parse(update.resultIds);
+  db.query(QUERY_UPDATE_JOB_RESULT_IDS).run(JSON.stringify(parsed), update.jobId);
 }
 
 export function findJobRow(db: Database, jobId: string): JobRow | undefined {
@@ -184,12 +155,11 @@ export function findJobRow(db: Database, jobId: string): JobRow | undefined {
 
 export function findCompletedOutput(
   db: Database,
-  kind: TaskKind,
-  invoiceNo: string,
-  supplier: string,
-  erpHost: string,
+  search: { kind: TaskKind; invoiceNo: string; supplier: string; erpHost: string },
 ): string | undefined {
-  const rows: unknown[] = db.query(QUERY_FIND_COMPLETED_OUTPUT).all(kind, TASK_STATUS_DONE, erpHost);
+  const rows: unknown[] = db
+    .query(QUERY_FIND_COMPLETED_OUTPUT)
+    .all(search.kind, TASK_STATUS_DONE, search.erpHost);
   for (const row of rows) {
     const candidate = CompletedOutputRowSchema.safeParse(row);
     if (!candidate.success) {
@@ -202,7 +172,7 @@ export function findCompletedOutput(
     if (invoice === undefined) {
       continue;
     }
-    if (invoice.invoice_no === invoiceNo && invoice.supplier === supplier) {
+    if (invoice.invoice_no === search.invoiceNo && invoice.supplier === search.supplier) {
       return candidate.data.output_id;
     }
   }
@@ -218,11 +188,9 @@ export function insertTask(
 
 export function updateTask(
   db: Database,
-  taskId: string,
-  status: TaskStatus,
-  outputId: string | null,
+  update: { taskId: string; status: TaskStatus; outputId: string | null },
 ): void {
-  db.query(QUERY_UPDATE_TASK).run(status, outputId, taskId);
+  db.query(QUERY_UPDATE_TASK).run(update.status, update.outputId, update.taskId);
 }
 
 export function findTaskRows(db: Database, jobId: string): TaskRow[] {
@@ -250,11 +218,12 @@ export function findQuestionRow(db: Database, questionId: string): QuestionRow |
   return QuestionRowSchema.parse(row);
 }
 
-export function answerQuestionRow(db: Database, questionId: string, answer: string): void {
-  db.query(QUERY_ANSWER_QUESTION).run(answer, QUESTION_STATUS_ANSWERED, questionId);
+export function answerQuestionRow(
+  db: Database,
+  update: { questionId: string; answer: string },
+): void {
+  db.query(QUERY_ANSWER_QUESTION).run(update.answer, QUESTION_STATUS_ANSWERED, update.questionId);
 }
-
-const MemoryAnswerRowSchema = z.object({ answer: z.string() });
 
 export function upsertMemory(
   db: Database,
@@ -263,8 +232,11 @@ export function upsertMemory(
   db.query(QUERY_UPSERT_MEMORY).run(row.erpHost, row.qNorm, row.answer, row.updatedAt);
 }
 
-export function findMemoryAnswer(db: Database, erpHost: string, qNorm: string): string | undefined {
-  const row: unknown = db.query(QUERY_FIND_MEMORY_ANSWER).get(erpHost, qNorm);
+export function findMemoryAnswer(
+  db: Database,
+  search: { erpHost: string; qNorm: string },
+): string | undefined {
+  const row: unknown = db.query(QUERY_FIND_MEMORY_ANSWER).get(search.erpHost, search.qNorm);
   if (row === undefined || row === null) {
     return undefined;
   }

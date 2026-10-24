@@ -1,16 +1,22 @@
+import { Suspense } from "react";
 import * as z from "zod";
 import { env } from "@/env";
 import { API_PATHS, JobViewSchema, type JobView } from "shared";
-import { JobViewPanel } from "./job-view";
+import { JobViewPanel } from "./job-view-panel";
 
 const MIN_ID_LENGTH = 1 as const;
 const ID_PARAM = ":id" as const;
+const LOADING_LABEL = "Loading…" as const;
 
-export default async function JobPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function Page({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={<p>{LOADING_LABEL}</p>}>
+      <JobPageContent params={params} />
+    </Suspense>
+  );
+}
+
+async function JobPageContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const jobId: string = z.string().min(MIN_ID_LENGTH).parse(id);
   let initial: JobView | null = null;

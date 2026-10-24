@@ -108,14 +108,14 @@ test("answering a queued question resumes the paused job and completes the chain
   expect(resumed.questions[0]?.status).toBe(QUESTION_STATUS_ANSWERED);
   const poTasks = resumed.tasks.filter((task) => task.kind === TASK_KIND_PO);
   expect(poTasks).toHaveLength(SINGLE_COUNT);
-  expect(poTasks[0]?.status).toBe(TASK_STATUS_DONE);
-  const entries = listMemory(db, DEMO_ERP_HOST);
-  expect(entries).toHaveLength(SINGLE_COUNT);
-  expect(entries[0]).toEqual({
-    erp_host: DEMO_ERP_HOST,
-    q_norm: DEMO_QUESTION_NORM,
-    answer: DEMO_ANSWER,
-  });
+  expect(resumed.tasks.find((task) => task.kind === TASK_KIND_PO)?.status).toBe(TASK_STATUS_DONE);
+  expect(listMemory(db, DEMO_ERP_HOST)).toEqual([
+    {
+      erp_host: DEMO_ERP_HOST,
+      q_norm: DEMO_QUESTION_NORM,
+      answer: DEMO_ANSWER,
+    },
+  ]);
 });
 
 test("the same doubt on the next job for the same host produces zero new questions", async () => {
@@ -159,7 +159,7 @@ test("memory list shows the learned entry and count per host", async () => {
   );
   const entries = listMemory(db, DEMO_ERP_HOST);
   expect(entries).toHaveLength(SINGLE_COUNT);
-  expect(entries[0]?.answer).toBe(DEMO_ANSWER);
+  expect(entries.map((entry) => entry.answer)).toEqual([DEMO_ANSWER]);
   expect(listMemory(db, DEMO_ERP_HOST_2)).toHaveLength(NO_QUESTIONS);
   expect(getLearnedContext(db, DEMO_ERP_HOST)).toContain(DEMO_ANSWER);
   expect(getLearnedContext(db, DEMO_ERP_HOST_2)).toBe(EMPTY_LEARNED_CONTEXT);
@@ -169,6 +169,7 @@ test("blank answers are rejected without touching memory", async () => {
   const db = openDb();
   const paused = await createJob(makeInput(), { db, agent: alwaysDoubtAgent() });
   const questionId: string = requiredId(paused.questions[0]?.id);
+  // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression -- bun's types declare rejects().toThrow() as void, but at runtime it returns a tracked assertion (verified: un-awaited delayed resolve fails the test, delayed reject passes), so awaiting matches runtime behavior.
   await expect(
     answerQuestion({ jobId: paused.id, questionId, answer: BLANK_ANSWER }, { db, agent: goalAwareAgent() }),
   ).rejects.toThrow();
@@ -182,6 +183,7 @@ test("answering an already-answered question throws and leaves the job done", as
   const answered = { jobId: paused.id, questionId, answer: DEMO_ANSWER };
   const resumed = await answerQuestion(answered, { db, agent: goalAwareAgent() });
   expect(resumed.status).toBe(JOB_STATUS_DONE);
+  // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression -- bun's types declare rejects().toThrow() as void, but at runtime it returns a tracked assertion (verified: un-awaited delayed resolve fails the test, delayed reject passes), so awaiting matches runtime behavior.
   await expect(answerQuestion(answered, { db, agent: goalAwareAgent() })).rejects.toThrow();
   expect(getJob(db, paused.id)?.status).toBe(JOB_STATUS_DONE);
 });

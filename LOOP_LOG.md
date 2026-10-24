@@ -153,3 +153,28 @@
    (customer mapping may need Memory/goal tuning), warehouse answer
    (`Main Warehouse` vs ERPNext's `Main Warehouse - DFC`), 25-min manual
    baseline is a rough estimate.
+
+## TS 6.0.3 downgrade plus lint cleanup (2026-10-24, uncommitted)
+- Downgraded `typescript` ^7 → ^6.0.3 (web devDep, root + shared peerDeps) via
+  `bun add`; typescript-eslint 8.72 runs again. `bun run check` green
+  (typecheck x3, eslint root/api/web/shared), 21 api tests green,
+  react-doctor clean on new files.
+- Fixed 2 latent config bugs the TS7 crash had hidden: type-aware sets now
+  scoped to TS files (`scopedTo` in eslint.base.mjs) + web filters the
+  duplicate tseslint base block Next already provides (TSESLINT_BASE_BLOCK).
+- api: orchestrator.ts split into events/goals/types/invoke/run-chain-step/
+  create-step-defs/chain/queries/jobs + facade; db.ts split rows.ts;
+  llm.ts renamed create-invoice-llm.ts; options-object params; 4 targeted
+  disables (2 boundary-unknown, bun rejects-typing x2 with probe evidence).
+  One test-behavior note: `await expect().rejects.toThrow()` kept as-is;
+  bun tracks un-awaited rejects correctly but awaiting matches the proven suite.
+- web: parse page split (lib/parse-requests + use-parse-page + panels);
+  job view split (lib/job-api + use-job-view + sections + panel, file
+  renamed job-view-panel.tsx); route exports renamed Page; next.config.ts
+  disable (framework-fixed filename); 2 mountedRef/set-state disables
+  documented as rule false positives.
+- TEMPORARY: web config ignores src/components/ui/** + 3 unused scaffold
+  files (hooks/use-mobile, hooks/use-highlighted-code, lib/highlighter).
+  Remove once the UI scaffold phase (user-approved next step) is done.
+- Review: Muse review found no behavior drift; review fixes applied
+  (re-await rejects, full row-type re-exports, stale facade comment).

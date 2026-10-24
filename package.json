@@ -15,7 +15,7 @@
     "typescript-eslint": "^8.72.0"
   },
   "peerDependencies": {
-    "typescript": "^7"
+    "typescript": "^6"
   },
   "workspaces": [
     "apps/*",

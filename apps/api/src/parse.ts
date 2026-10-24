@@ -12,9 +12,9 @@ import {
 } from "shared";
 import { logger } from "./logger";
 
-export type LlmPort = {
+export interface LlmPort {
   completeInvoiceJson: (text: string) => Promise<unknown>;
-};
+}
 
 type ParseFixReason = z.infer<typeof ParseFixReasonSchema>;
 
@@ -31,7 +31,13 @@ function isBlank(text: string): boolean {
   return text.trim() === EMPTY_TEXT;
 }
 
-export function parseInvoiceJson(json: unknown): ParseResult {
+// parseInvoiceJson is the boundary decoder: unknown input (LLM output,
+// request body, fixture) is validated here, so the unknown parameter is
+// intentional and callers must not pre-parse.
+export function parseInvoiceJson(
+  // eslint-disable-next-line llm-core/no-unknown-parameters
+  json: unknown,
+): ParseResult {
   const parsed = InvoiceJSONSchema.safeParse(json);
   if (!parsed.success) {
     return needsFix(FIX_REASON_VALIDATION_FAILED);

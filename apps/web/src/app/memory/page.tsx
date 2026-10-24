@@ -16,7 +16,7 @@ const COUNT_LABEL = "Learned count" as const;
 const LOADING_LABEL = "Loading…" as const;
 const QUERY_HOST_PARAM = "erp_host" as const;
 
-export default function MemoryPage() {
+export default function Page() {
   const [host, setHost] = useState<string>(env.NEXT_PUBLIC_ERP_HOST);
   const [entries, setEntries] = useState<MemoryEntry[] | null>(null);
 
@@ -47,30 +47,43 @@ export default function MemoryPage() {
         </CardHeader>
         <CardContent>
           <Label>{HOST_LABEL}</Label>
-          <Input value={host} onChange={(event) => setHost(event.target.value)} />
-          <Button onClick={() => void load()}>{LOAD_BUTTON}</Button>
-          {entries === null ? (
-            <p>{LOADING_LABEL}</p>
-          ) : (
-            <>
-              <p>
-                {COUNT_LABEL}
-                {LABEL_SEPARATOR}
-                {entries.length}
-              </p>
-              <ul>
-                {entries.map((entry) => (
-                  <li key={[entry.erp_host, entry.q_norm].join(SPACE)}>
-                    {entry.q_norm}
-                    {LABEL_SEPARATOR}
-                    {entry.answer}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          <Input
+            value={host}
+            onChange={(event) => {
+              setHost(event.target.value);
+            }}
+          />
+          <Button
+            onClick={() => {
+              void load();
+            }}
+          >
+            {LOAD_BUTTON}
+          </Button>
+          {entries === null ? <p>{LOADING_LABEL}</p> : <MemoryEntries entries={entries} />}
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+function MemoryEntries({ entries }: { entries: MemoryEntry[] }) {
+  return (
+    <>
+      <p>
+        {COUNT_LABEL}
+        {LABEL_SEPARATOR}
+        {entries.length}
+      </p>
+      <ul>
+        {entries.map((entry) => (
+          <li key={[entry.erp_host, entry.q_norm].join(SPACE)}>
+            {entry.q_norm}
+            {LABEL_SEPARATOR}
+            {entry.answer}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

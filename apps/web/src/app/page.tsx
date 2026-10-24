@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
@@ -11,8 +12,17 @@ const PARSE_LINK_LABEL = "Parse an invoice" as const;
 const PARSE_HREF = "/parse" as const;
 const MEMORY_LINK_LABEL = "View learned memory" as const;
 const MEMORY_HREF = "/memory" as const;
+const LOADING_LABEL = "Loading…" as const;
 
-export default async function Home() {
+export default function Page() {
+  return (
+    <Suspense fallback={<p>{LOADING_LABEL}</p>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+async function HomeContent() {
   const res = await api.api.hello.$get();
   if (!res.ok) {
     throw new Error(API_ERROR_MESSAGE);
