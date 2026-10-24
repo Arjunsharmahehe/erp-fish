@@ -13,7 +13,7 @@ export const WEB_SEARCH_TOOL = "web_search" as const;
 export const WEB_SEARCH_TOOL_DESCRIPTION = "Search the web and return results." as const;
 
 const PLANNING_SYSTEM_PROMPT =
-  "You are a planning assistant for ERP invoice processing. Answer questions about the attached invoice. Cite invoice values and any browsed sources." as const;
+  `You are a planning assistant for ERP invoice processing. Answer questions about the attached invoice. When the question needs facts beyond the invoice, call ${WEB_SEARCH_TOOL} to find sources and ${FETCH_URL_TOOL} to read them, then answer with invoice values and browsed facts. List every browsed source URL in citations.` as const;
 const INVOICE_CONTEXT_LABEL = "Invoice context:" as const;
 const BROWSING_UNAVAILABLE_NOTE =
   "Web browsing is unavailable in this environment; answer from the invoice context only." as const;

@@ -244,3 +244,26 @@
   login dummy-verify (timing), thread-ownership dedupe on 3rd use.
   Vault shows connected here because the shell env has TINYFISH_API_KEY;
   keyless CI/dev without it degrades per contract.
+
+## Plan-mode TinyFish tools wired (2026-10-24, on backend/plan-mode, unpushed)
+- New apps/api/src/create-planning-tools.ts: web_search + fetch_url as
+  @tanstack/ai server tools (.server(execute)) backed by TinyFish SDK
+  search.query / fetch.getContents (zero new deps). Bounded outputs:
+  5 results, 500-char snippets, 8000-char markdown, purpose capped at
+  the SDK 2000-char limit. Fetch failures throw fetch_failed, which the
+  framework feeds back as output-error (model retries/answers anyway).
+- create-chat-llm.ts passes tools into chat() with outputSchema:
+  agentic structured output (run tools, then validated ChatResult).
+  Empty tools without keys = direct answer; prompt instructs tool use +
+  URL citations, names interpolated from constants.
+- Live-verified with the provided testing key (not stored anywhere):
+  search 10 hits -> 5 kept, fetch markdown 8000 chars, bad URL throws
+  fetch_failed, keyed route without LLM still degraded 200 (no crash).
+- Review fixes: fetch purpose forwarded (was dropped), markdown format
+  + tool names + caps as named constants, fetch-fail warn logs URL.
+  Declined: threading toolsAvailable (ambient env singleton is airtight),
+  tool unit tests (no confirmed seam; live-verified instead), threadId
+  in tool logs (port surface stays minimal).
+- Full agentic loop (model calling tools) still needs OPENAI_BASE_URL /
+  OPENAI_API_KEY / OPENAI_MODEL — no LLM key in this environment, so
+  that last mile is unverified until keys land.
