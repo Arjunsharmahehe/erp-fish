@@ -1,0 +1,25 @@
+{
+  "name": "erp-fish",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "lint": "eslint eslint.base.mjs eslint.config.mjs index.ts && bun run --filter 'api' lint && bun run --filter 'web' lint && bun run --filter 'shared' lint",
+    "check": "bun run typecheck && bun run lint",
+    "typecheck": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "@shadcn/lint": "^0.2.3",
+    "@types/bun": "latest",
+    "eslint": "^10.13.0",
+    "eslint-plugin-llm-core": "^0.37.1",
+    "typescript-eslint": "^8.72.0"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
