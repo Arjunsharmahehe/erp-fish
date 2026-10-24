@@ -18,10 +18,18 @@ import {
   ParseRequestSchema,
   ProfileStatusSchema,
   QUESTION_STATUS_QUEUED,
+  VAULT_CONNECTED,
+  VAULT_NOT_CONFIGURED,
 } from "shared";
-import { currentVault } from "./auth";
+import { readSessionUser } from "./auth";
+import { requireOwnedJob } from "./job-ownership";
+import { userMemoryScope } from "./learning-router";
+import { connectionState } from "./connections";
 import { createChatRouter } from "./create-chat-router";
 import { createAuthRouter } from "./create-auth-router";
+import { createLearningRouter } from "./learning-router";
+import { createQuestionRouter } from "./create-question-router";
+import { createSettingsRouter } from "./create-settings-router";
 import { findJobRow, findQuestionRow, openDb } from "./db";
 import { MISSING_DEMO_CONFIG_MESSAGE, createDemoAgent } from "./demoAgent";
 import { DEMO_AGENT_ON, env } from "./env";
@@ -49,6 +57,7 @@ const QUESTION_NOT_ANSWERABLE_MESSAGE = "question_not_answerable" as const;
 const STREAM_TASK_EVENT = "task" as const;
 const STREAM_QUESTION_EVENT = "question" as const;
 const STREAM_DONE_EVENT = "done" as const;
+const PROFILE_REQUIRED = "Connect your ERP login in Settings before starting a job.";
 
 function requireLlm() {
   try {
@@ -70,6 +79,8 @@ function requireDemoAgent(instruction: string) {
 }
 
 const jobsDb: Database = openDb(env.DB_PATH);
+const RECOVER_INTERRUPTED_RESUMES = "UPDATE learning_questions SET resume_status='failed' WHERE resume_status='running'";
+jobsDb.run(RECOVER_INTERRUPTED_RESUMES);
 
 const app = new Hono()
   .use(CORS_WILDCARD_PATH, cors({ origin: env.CORS_ORIGIN, credentials: true }))
@@ -105,21 +116,27 @@ const app = new Hono()
   })
   .post(API_PATHS.jobs, zValidator("json", JobInputSchema), async (c) => {
     logger.info({ route: API_PATHS.jobs }, JOBS_LOG_MESSAGE);
-    const input = c.req.valid("json");
+    const user = await readSessionUser(c, jobsDb);
+    const scope = userMemoryScope(user);
+    if (!user.profile_id) throw new HTTPException(SERVICE_UNAVAILABLE_STATUS, { message: PROFILE_REQUIRED });
+    const input = { ...c.req.valid("json"), erp_host: scope.erpHost, profile_id: user.profile_id };
     const view = await createJob(input, {
       db: jobsDb,
+      userId: user.id,
       agent: requireDemoAgent(input.instruction),
     });
     return c.json(view, CREATED_STATUS);
   })
-  .get(API_PATHS.jobById, (c) => {
+  .get(API_PATHS.jobById, async (c) => {
+    requireOwnedJob(jobsDb, { jobId: c.req.param("id"), userId: (await readSessionUser(c, jobsDb)).id });
     const view = getJob(jobsDb, c.req.param("id"));
     if (view === undefined) {
       throw new HTTPException(NOT_FOUND_STATUS, { message: JOB_NOT_FOUND_MESSAGE });
     }
     return c.json(view);
   })
-  .get(API_PATHS.jobStream, (c) => {
+  .get(API_PATHS.jobStream, async (c) => {
+    requireOwnedJob(jobsDb, { jobId: c.req.param("id"), userId: (await readSessionUser(c, jobsDb)).id });
     const view = getJob(jobsDb, c.req.param("id"));
     if (view === undefined) {
       throw new HTTPException(NOT_FOUND_STATUS, { message: JOB_NOT_FOUND_MESSAGE });
@@ -144,12 +161,14 @@ const app = new Hono()
     });
   })
   .post(API_PATHS.questions, zValidator("json", AnswerRequestSchema), async (c) => {
+    const user = await readSessionUser(c, jobsDb);
     logger.info({ route: API_PATHS.questions }, QUESTIONS_LOG_MESSAGE);
     const questionId: string = c.req.param("id");
     const question = findQuestionRow(jobsDb, questionId);
     if (question === undefined) {
       throw new HTTPException(NOT_FOUND_STATUS, { message: QUESTION_NOT_FOUND_MESSAGE });
     }
+    requireOwnedJob(jobsDb, { jobId: question.job_id, userId: user.id });
     if (question.status !== QUESTION_STATUS_QUEUED) {
       throw new HTTPException(BAD_REQUEST_STATUS, {
         message: QUESTION_NOT_ANSWERABLE_MESSAGE,
@@ -161,22 +180,28 @@ const app = new Hono()
     }
     const view = await answerQuestion(
       { jobId: question.job_id, questionId, answer: c.req.valid("json").answer },
-      { db: jobsDb, agent: requireDemoAgent(job.instruction) },
+      { db: jobsDb, userId: user.id, agent: requireDemoAgent(job.instruction) },
     );
     return c.json(view);
   })
-  .get(API_PATHS.memory, zValidator("query", MemoryQuerySchema), (c) => {
-    return c.json(listMemory(jobsDb, c.req.valid("query").erp_host));
+  .get(API_PATHS.memory, zValidator("query", MemoryQuerySchema), async (c) => {
+    const scope = userMemoryScope(await readSessionUser(c, jobsDb));
+    return c.json(listMemory(jobsDb, scope));
   })
-  .get(API_PATHS.profilesStatus, (c) => {
+  .get(API_PATHS.profilesStatus, async (c) => {
+    const user = await readSessionUser(c, jobsDb);
+    const connection = connectionState(jobsDb, user);
     return c.json(
       ProfileStatusSchema.parse({
-        vault: currentVault(),
-        erp_host: env.ERP_BASE_URL ?? null,
+        vault: connection.vault_available ? VAULT_CONNECTED : VAULT_NOT_CONFIGURED,
+        erp_host: user.erp_host,
       }),
     );
   })
   .route("/", createAuthRouter(jobsDb))
+  .route("/", createLearningRouter(jobsDb))
+  .route("/", createQuestionRouter(jobsDb))
+  .route("/", createSettingsRouter(jobsDb))
   .route("/", createChatRouter(jobsDb));
 
 export type AppType = typeof app;

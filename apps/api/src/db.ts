@@ -25,8 +25,12 @@ import {
   type QuestionRow,
   type TaskRow,
 } from "./rows";
-import { SCHEMA_CHAT_MESSAGES, SCHEMA_CHAT_THREADS } from "./threads";
+import { SCHEMA_CHAT_MESSAGES, SCHEMA_CHAT_THREADS, SCHEMA_THREAD_STATE, SCHEMA_CHAT_DETAILS } from "./threads";
 import { SCHEMA_USERS } from "./users";
+import { LEARNING_SQL } from "./learning";
+import { JOB_OWNERS_SQL } from "./job-ownership";
+import { connectionSql as CONNECTION_SQL } from "./connection-sql";
+import { THREAD_SCOPE_SQL } from "./thread-scope";
 
 export const IN_MEMORY_DB_PATH = ":memory:" as const;
 
@@ -75,7 +79,7 @@ const QUERY_UPDATE_JOB_STATUS = "UPDATE jobs SET status = ? WHERE id = ?" as con
 const QUERY_UPDATE_JOB_RESULT_IDS = "UPDATE jobs SET result_ids = ? WHERE id = ?" as const;
 const QUERY_FIND_JOB = "SELECT * FROM jobs WHERE id = ?" as const;
 const QUERY_FIND_COMPLETED_OUTPUT =
-  "SELECT tasks.output_id AS output_id, jobs.invoice_json AS invoice_json FROM tasks JOIN jobs ON jobs.id = tasks.job_id WHERE tasks.kind = ? AND tasks.status = ? AND jobs.erp_host = ?" as const;
+  "SELECT tasks.output_id AS output_id, jobs.invoice_json AS invoice_json FROM tasks JOIN jobs ON jobs.id = tasks.job_id LEFT JOIN job_owners ON job_owners.job_id=jobs.id WHERE tasks.kind = ? AND tasks.status = ? AND jobs.erp_host = ? AND job_owners.user_id IS ?" as const;
 const QUERY_INSERT_TASK =
   "INSERT INTO tasks(id, job_id, kind, status, output_id) VALUES(?, ?, ?, ?, ?)" as const;
 const QUERY_UPDATE_TASK = "UPDATE tasks SET status = ?, output_id = ? WHERE id = ?" as const;
@@ -114,6 +118,14 @@ export function openDb(path: string = IN_MEMORY_DB_PATH): Database {
   db.run(SCHEMA_USERS);
   db.run(SCHEMA_CHAT_THREADS);
   db.run(SCHEMA_CHAT_MESSAGES);
+  db.run(SCHEMA_THREAD_STATE);
+  db.run(SCHEMA_CHAT_DETAILS);
+  db.run(LEARNING_SQL.questions);
+  db.run(LEARNING_SQL.memories);
+  db.run(LEARNING_SQL.blockedSources);
+  db.run(JOB_OWNERS_SQL.schema);
+  db.run(CONNECTION_SQL.schema);
+  db.run(THREAD_SCOPE_SQL.schema);
   return db;
 }
 
@@ -160,11 +172,11 @@ export function findJobRow(db: Database, jobId: string): JobRow | undefined {
 
 export function findCompletedOutput(
   db: Database,
-  search: { kind: TaskKind; invoiceNo: string; supplier: string; erpHost: string },
+  search: { kind: TaskKind; invoiceNo: string; supplier: string; erpHost: string; userId?: string },
 ): string | undefined {
   const rows: unknown[] = db
     .query(QUERY_FIND_COMPLETED_OUTPUT)
-    .all(search.kind, TASK_STATUS_DONE, search.erpHost);
+    .all(search.kind, TASK_STATUS_DONE, search.erpHost, search.userId ?? null);
   for (const row of rows) {
     const candidate = CompletedOutputRowSchema.safeParse(row);
     if (!candidate.success) {

@@ -3,6 +3,8 @@ import {
   DEMO_QUESTION_RAW,
   DEMO_SO_ID,
   DEMO_STOCK_ID,
+  DEMO_INSTRUCTION,
+  DEMO_ANSWER,
 } from "shared";
 import {
   STEP_NEEDS_INPUT,
@@ -25,7 +27,8 @@ function doubtResult(): AgentStepResult {
 export function createDemoAgent(instruction: string): AgentPort {
   const doubts: boolean = instruction.includes(DOUBT_TRIGGER);
   return {
-    runPurchaseOrder: () => Promise.resolve(doubts ? doubtResult() : okResult(DEMO_PO_ID)),
+    decideMemory: ({ question }) => Promise.resolve({ question, context: DEMO_INSTRUCTION }),
+    runPurchaseOrder: ({ goal }) => Promise.resolve(doubts && !goal.includes(DEMO_ANSWER) ? doubtResult() : okResult(DEMO_PO_ID)),
     runSalesOrder: () => Promise.resolve(okResult(DEMO_SO_ID)),
     runStockEntry: () => Promise.resolve(okResult(DEMO_STOCK_ID)),
   };

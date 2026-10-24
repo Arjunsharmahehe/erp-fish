@@ -39,6 +39,7 @@ export interface PlanChatLlmPort {
 export interface PlanChatInput {
   messages: ChatMessage[];
   invoice?: InvoiceJSON;
+  learningContext?: string;
 }
 
 export interface PlanChatDeps {
@@ -72,7 +73,7 @@ export async function planChat(input: PlanChatInput, deps: PlanChatDeps): Promis
     return { message: CHAT_DEGRADED_MESSAGE, citations: [] };
   }
   const result = await deps.llm.completePlanningChat({
-    system: buildSystemPrompt(input.invoice, deps.toolsAvailable),
+    system: [buildSystemPrompt(input.invoice, deps.toolsAvailable), input.learningContext ?? SPACE].join(SPACE),
     messages: input.messages,
     tools: availableTools(deps.toolsAvailable),
   });

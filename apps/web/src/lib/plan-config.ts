@@ -69,6 +69,7 @@ export const PLAN_COPY = {
   send: "Send",
   sending: "Sending…",
   attach: "Attach PDF or JSON invoice",
+  removeAttachment: "Remove attachment",
   parseFailed: "The invoice could not be read. Check the PDF or JSON and try again.",
   chatFailed: "The message could not be sent. Try again.",
   invoiceReady: "Invoice ready",
@@ -110,4 +111,4 @@ const CONFLICT_STATUS = 409;
 const NOT_FOUND_STATUS = 404;
 const UNAVAILABLE_STATUS = 503;
 export const PLAN_STATUS = Object.freeze({ unauthorized: UNAUTHORIZED_STATUS, conflict: CONFLICT_STATUS, notFound: NOT_FOUND_STATUS, unavailable: UNAVAILABLE_STATUS });
-export const INVOICE_FILE = Object.freeze({ jsonExtension: ".json", pdfExtension: ".pdf" });
+export const INVOICE_FILE = Object.freeze({ jsonExtension: ".json", pdfExtension: ".pdf", emptyInput: "" });

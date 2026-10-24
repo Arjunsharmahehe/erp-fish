@@ -3,6 +3,7 @@ import {
   AuthResponseSchema, ChatResponseSchema, ChatThreadSchema, ChatThreadDetailSchema,
   InvoiceJSONSchema, PARSE_OK, ParseResultSchema, SessionUserSchema,
   SignupRequestSchema, OnboardingRequestSchema, ChatRequestSchema,
+  ThreadUpdateSchema, type ThreadUpdate,
   type ChatMessage, type InvoiceJSON, type SessionUser, type ChatThread,
 } from "shared";
 import { api } from "@/lib/api";
@@ -43,11 +44,9 @@ export async function authenticate(options: { kind: typeof PLAN_API.signup | typ
   return (await decode(response, AuthResponseSchema)).user;
 }
 
-export async function onboard(options: { erpHost: string; username: string; password: string }): Promise<SessionUser> {
+export async function onboard(options: { erpHost: string }): Promise<SessionUser> {
   const json = OnboardingRequestSchema.parse({
     erp_host: options.erpHost,
-    ...(options.username.trim() ? { erp_username: options.username.trim() } : {}),
-    ...(options.password ? { erp_password: options.password } : {}),
   });
   return decode(await request(() => api.api.onboarding.$post({ json })), SessionUserSchema);
 }
@@ -59,6 +58,16 @@ export async function logout(): Promise<void> {
 
 export async function listThreads(): Promise<ThreadSummary[]> {
   return decode(await request(() => api.api.chat.threads.$get()), z.array(ChatThreadSchema));
+}
+
+export async function updateThread(id: string, update: ThreadUpdate): Promise<ThreadSummary> {
+  const json = ThreadUpdateSchema.parse(update);
+  return decode(await request(() => api.api.chat.threads[":id"].$patch({ param: { id }, json })), ChatThreadSchema);
+}
+
+export async function deleteThread(id: string): Promise<void> {
+  const response = await request(() => api.api.chat.threads[":id"].$delete({ param: { id } }));
+  if (!response.ok) throw new Error(PLAN_COPY.authError);
 }
 
 export async function loadThread(id: string): Promise<ChatMessage[]> {

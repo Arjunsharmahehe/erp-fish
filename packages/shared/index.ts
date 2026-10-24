@@ -10,6 +10,7 @@ import {
 export * from "./base";
 export * from "./auth";
 export * from "./chat";
+export * from "./chat-activity";
 
 export const API_PATHS = {
   hello: "/api/hello",
@@ -26,6 +27,7 @@ export const API_PATHS = {
   authMe: "/api/auth/me",
   onboarding: "/api/onboarding",
   chat: "/api/chat",
+  chatStream: "/api/chat/stream",
   chatThreads: "/api/chat/threads",
   chatThreadById: "/api/chat/threads/:id",
 } as const;
@@ -220,3 +222,5 @@ export const DEMO_SO_ID = "SO-DEMO-0001" as const;
 export const DEMO_STOCK_ID = "ST-DEMO-0001" as const;
 export const DEMO_QUESTION_RAW = "Which warehouse should receive this stock?" as const;
 export const DEMO_QUESTION_NORM = "which warehouse should receive this stock?" as const;
+export * from "./learning";
+export * from "./connection";

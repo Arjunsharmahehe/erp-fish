@@ -3,7 +3,9 @@ import {
   JOB_STATUS_FAILED,
   JOB_STATUS_WAITING,
   type TaskKind,
+  type MemoryDecisionSchema,
 } from "shared";
+import type { z } from "zod";
 import {
   EVENT_PO_COMPLETED,
   EVENT_PO_REUSED,
@@ -29,6 +31,7 @@ export type StepAttemptResult =
   | { status: typeof STEP_FAILED };
 
 export interface AgentPort {
+  decideMemory?: (input: { question: string; answer: string; supplier: string }) => Promise<z.infer<typeof MemoryDecisionSchema>>;
   runPurchaseOrder: (input: { goal: string }) => Promise<AgentStepResult>;
   runSalesOrder: (input: { goal: string; purchaseOrderId: string }) => Promise<AgentStepResult>;
   runStockEntry: (input: {
@@ -39,6 +42,7 @@ export interface AgentPort {
 }
 
 export interface OrchestratorDeps {
+  userId?: string;
   db: Database;
   agent: AgentPort;
   onEvent?: (event: JobEvent) => void;

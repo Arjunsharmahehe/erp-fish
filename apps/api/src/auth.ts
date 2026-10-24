@@ -7,7 +7,6 @@ import * as z from "zod";
 import {
   MIN_TEXT_LENGTH,
   SessionUserSchema,
-  VAULT_CONNECTED,
   VAULT_NOT_CONFIGURED,
   type SessionUser,
 } from "shared";
@@ -31,7 +30,7 @@ const SessionClaimsSchema = z.object({
 });
 
 export function currentVault(): SessionUser["vault"] {
-  return env.TINYFISH_API_KEY === undefined ? VAULT_NOT_CONFIGURED : VAULT_CONNECTED;
+  return VAULT_NOT_CONFIGURED;
 }
 
 export function toSessionUser(user: UserRow): SessionUser {

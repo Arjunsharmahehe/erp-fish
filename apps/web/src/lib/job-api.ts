@@ -9,9 +9,10 @@ const METHOD_POST = "POST" as const;
 const JSON_MIME = "application/json" as const;
 const ID_PARAM = ":id" as const;
 const QUERY_HOST_PARAM = "erp_host" as const;
+const CREDENTIALS = "include";
 
 export async function fetchJobView(baseUrl: string, jobId: string): Promise<JobView | null> {
-  const res = await fetch(`${baseUrl}${API_PATHS.jobById.replace(ID_PARAM, jobId)}`);
+  const res = await fetch(`${baseUrl}${API_PATHS.jobById.replace(ID_PARAM, jobId)}`, { credentials: CREDENTIALS });
   if (!res.ok) {
     return null;
   }
@@ -22,6 +23,7 @@ export async function fetchLearnedCount(baseUrl: string, erpHost: string): Promi
   try {
     const mem = await fetch(
       `${baseUrl}${API_PATHS.memory}?${QUERY_HOST_PARAM}=${encodeURIComponent(erpHost)}`,
+      { credentials: CREDENTIALS },
     );
     if (!mem.ok) {
       return null;
@@ -42,6 +44,7 @@ export async function postAnswer(request: {
     `${request.baseUrl}${API_PATHS.questions.replace(ID_PARAM, request.questionId)}`,
     {
       method: METHOD_POST,
+      credentials: CREDENTIALS,
       headers: { [CONTENT_TYPE_HEADER]: JSON_MIME },
       body: JSON.stringify({ answer: request.answer }),
     },

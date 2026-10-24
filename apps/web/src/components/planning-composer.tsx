@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, type RefObject } from "react";
-import { ArrowUpIcon, FileTextIcon, PlusIcon } from "lucide-react";
+import { ArrowUpIcon, FileTextIcon, PlusIcon, XIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Attachment, AttachmentContent, AttachmentDescription, AttachmentMedia, AttachmentTitle } from "@/components/ui/attachment";
+import { Attachment, AttachmentAction, AttachmentActions, AttachmentContent, AttachmentDescription, AttachmentMedia, AttachmentTitle } from "@/components/ui/attachment";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,13 +17,14 @@ type Mode = typeof PLAN_MODE.planning | typeof PLAN_MODE.agent;
 interface ModeControl { mode: Mode; setMode: (mode: Mode) => void }
 const MODE_ITEMS = [{ value: PLAN_MODE.planning, label: PLAN_COPY.planning }, { value: PLAN_MODE.agent, label: PLAN_COPY.agent }];
 
-function InvoiceAttachment({ state }: { state: InvoiceState }) {
+function InvoiceAttachment({ state, sending }: { state: InvoiceState; sending: boolean }) {
   if (!state.fileName) return null;
   return <Attachment state={state.parsing ? "processing" : state.invoice ? "done" : "error"}>
     <AttachmentMedia variant="icon"><FileTextIcon /></AttachmentMedia>
     <AttachmentContent><AttachmentTitle>{state.fileName}</AttachmentTitle>
       <AttachmentDescription>{state.invoice ? `${PLAN_COPY.invoiceReady}: ${state.invoice.invoice_no}` : state.parsing ? PLAN_COPY.loading : PLAN_COPY.parseFailed}</AttachmentDescription>
     </AttachmentContent>
+    <AttachmentActions><AttachmentAction type="button" size="icon-sm" aria-label={`${PLAN_COPY.removeAttachment}: ${state.fileName}`} title={PLAN_COPY.removeAttachment} disabled={sending} onClick={state.removeAttachment}><XIcon /></AttachmentAction></AttachmentActions>
   </Attachment>;
 }
 
@@ -54,7 +55,7 @@ export function PlanningComposer({ chat, invoice, disabled, inputRef, mode, setM
   const error = chat.error ?? invoice.error;
   return <form onSubmit={(event) => { void chat.send(event); }} className="mx-auto flex w-full max-w-3xl shrink-0 flex-col gap-3 px-5 pb-5 sm:px-8 sm:pb-7">
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-    <InvoiceAttachment state={invoice} />
+    <InvoiceAttachment state={invoice} sending={chat.sending} />
     <InputGroup>
       <InputGroupTextarea ref={inputRef} rows={PLAN_LIMITS.composerRows} aria-label={PLAN_COPY.composeLabel} placeholder={HOME_COPY.composerPlaceholder} className="min-h-10 max-h-32 overflow-y-auto" value={chat.draft} onChange={(event) => { chat.setDraft(event.target.value); }} disabled={disabled} onKeyDown={(event) => {
         if (event.key !== HOME_KEYS.submit || !(event.ctrlKey || event.metaKey) || event.nativeEvent.isComposing) return;

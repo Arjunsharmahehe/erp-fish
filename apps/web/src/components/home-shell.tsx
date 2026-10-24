@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { ChevronRightIcon, MessageSquareIcon, PlusIcon, LogOutIcon } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ChevronRightIcon, PlusIcon, LogOutIcon } from "lucide-react";
 import { Suspense, useState } from "react";
 import { BrandLogo, BrandMark } from "@/components/brand-logo";
+import { RecentThreads } from "@/components/recent-threads";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,10 +18,10 @@ import {
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VaultBadge } from "@/components/VaultBadge";
-import { listThreads, logout } from "@/lib/plan-api";
-import { PLAN_COPY, PLAN_ROUTES, THREADS_QUERY_KEY } from "@/lib/plan-config";
+import { logout } from "@/lib/plan-api";
+import { PLAN_COPY, PLAN_ROUTES } from "@/lib/plan-config";
 import { brand } from "@/lib/brand";
-import { HOME_COPY, HOME_KEYS, HOME_NAVIGATION, HOME_QUERY } from "@/lib/home-config";
+import { HOME_COPY, HOME_NAVIGATION, HOME_QUERY } from "@/lib/home-config";
 
 function AppNavigation() {
   const pathname = usePathname();
@@ -37,26 +38,6 @@ function AppNavigation() {
   </SidebarGroup>;
 }
 
-function RecentThreads() {
-  const threads = useQuery({ queryKey: THREADS_QUERY_KEY, queryFn: listThreads });
-  const selected = useSearchParams().get(HOME_QUERY.thread);
-  const pathname = usePathname();
-  const { setOpenMobile } = useSidebar();
-  return <SidebarGroup>
-    <SidebarGroupLabel>{HOME_COPY.recent}</SidebarGroupLabel>
-    <SidebarGroupContent>
-      {threads.isPending && <Skeleton className="h-8 w-full" />}
-      {threads.isError && <div className="flex flex-col items-start gap-2 px-2 py-3"><p className="text-xs text-muted-foreground">{HOME_COPY.threadError}</p><Button size="sm" variant="outline" onClick={() => { void threads.refetch(); }}>{HOME_COPY.retry}</Button></div>}
-      {threads.data?.length === HOME_KEYS.first && <p className="px-2 py-3 text-xs leading-relaxed text-muted-foreground">{HOME_COPY.noThreads}</p>}
-      <SidebarMenu>{threads.data?.map((thread) => <SidebarMenuItem key={thread.id}>
-        <SidebarMenuButton isActive={pathname === PLAN_ROUTES.home && selected === thread.id} onClick={() => { setOpenMobile(false); }} render={<Link href={{ pathname: PLAN_ROUTES.home, query: { [HOME_QUERY.thread]: thread.id } }} />}>
-          <MessageSquareIcon /><span>{thread.title}</span>
-        </SidebarMenuButton>
-      </SidebarMenuItem>)}</SidebarMenu>
-    </SidebarGroupContent>
-  </SidebarGroup>;
-}
-
 function WorkspaceSidebar() {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
@@ -66,7 +47,7 @@ function WorkspaceSidebar() {
   }
   return <Sidebar>
     <SidebarHeader><div className="flex flex-col gap-6 px-2 pb-2 pt-3">
-      <Link href={PLAN_ROUTES.home} aria-label={brand.homeLabel} className="w-fit rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring">
+      <Link href={PLAN_ROUTES.landing} aria-label={brand.homeLabel} onClick={() => { setOpenMobile(false); }} className="w-fit rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring">
         <BrandLogo className="h-10 w-auto" />
       </Link>
       <Button onClick={newConversation}><PlusIcon data-icon="inline-start" />{HOME_COPY.newChat}</Button>
@@ -108,7 +89,7 @@ function WorkspaceHeader() {
   return <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border px-4 sm:px-6">
     <div className="flex min-w-0 items-center gap-3">
       <SidebarTrigger />
-      <BrandMark className="h-7 w-8 md:hidden" />
+      <Link href={PLAN_ROUTES.landing} aria-label={brand.homeLabel} className="flex size-10 shrink-0 items-center justify-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"><BrandMark className="h-7 w-8" /></Link>
       <span className="hidden text-sm text-muted-foreground md:inline">{HOME_COPY.workspace}</span>
       <ChevronRightIcon className="hidden size-3 text-muted-foreground md:block" aria-hidden="true" />
       <span className="truncate text-sm font-medium">{title}</span>

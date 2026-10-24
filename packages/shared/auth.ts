@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { MIN_TEXT_LENGTH, VAULT_CONNECTED, VAULT_NOT_CONFIGURED } from "./base";
+import { ErpUrlSchema } from "./connection";
 
 export const MIN_PASSWORD_LENGTH = 8 as const;
 
@@ -17,11 +18,7 @@ export const LoginRequestSchema = z.object({
 
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 
-export const OnboardingRequestSchema = z.object({
-  erp_host: z.string().min(MIN_TEXT_LENGTH),
-  erp_username: z.string().min(MIN_TEXT_LENGTH).optional(),
-  erp_password: z.string().min(MIN_TEXT_LENGTH).optional(),
-});
+export const OnboardingRequestSchema = z.object({ erp_host: ErpUrlSchema }).strict();
 
 export type OnboardingRequest = z.infer<typeof OnboardingRequestSchema>;
 

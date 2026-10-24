@@ -8,26 +8,38 @@ import {
   type JobInput,
   type JobView,
   type MemoryEntry,
+  LEARNING,
+  MemoryDecisionSchema,
+  type MemoryScope,
+  type LearningQuestion,
 } from "shared";
 import {
   answerQuestionRow,
   findJobRow,
   findQuestionRow,
   insertJob,
-  listMemoryRows,
   updateJobStatus,
-  upsertMemory,
 } from "./db";
 import { EVENT_STARTED } from "./events";
-import { EMPTY_LEARNED, formatQa } from "./goals";
 import { pausedStep, rebuildCollected, STEP_ORDER, toView } from "./queries";
 import type { OrchestratorDeps } from "./types";
 import { makeEmit, runStepsFrom } from "./chain";
+import { JOB_OWNERS_SQL } from "./job-ownership";
+import { answerLearningQuestion, learningQuestion, learnedContext, listSavedMemories, rememberAnswer, listLearningQuestions } from "./learning";
+import { withChatLock } from "./chat-lock";
 
 const JOB_NOT_FOUND_MESSAGE = "job_not_found_after_create" as const;
 const ANSWER_TARGET_MESSAGE = "answer_target_not_queued" as const;
 const INVALID_ANSWER_MESSAGE = "answer_must_not_be_blank" as const;
-const LEARNED_JOIN = "\n" as const;
+
+async function recordJobAnswer(deps: OrchestratorDeps, options: { scope: MemoryScope; stored: LearningQuestion; answer: string; supplier: string }) {
+  const { scope, stored, supplier } = options;
+  const answer = stored.answer ?? options.answer;
+  if (stored.status === "pending") answerLearningQuestion(deps.db, { scope, id: stored.id, answer });
+  const decision = MemoryDecisionSchema.parse(await deps.agent.decideMemory?.({ question: stored.question, answer, supplier }) ?? null);
+  if (decision) rememberAnswer(deps.db, { scope, input: { question_id: stored.id, ...decision } });
+  return answer;
+}
 
 export interface AnswerInput {
   jobId: string;
@@ -35,16 +47,12 @@ export interface AnswerInput {
   answer: string;
 }
 
-export function listMemory(db: Database, erpHost: string): MemoryEntry[] {
-  return listMemoryRows(db, erpHost);
+export function listMemory(db: Database, scope: MemoryScope): MemoryEntry[] {
+  return listSavedMemories(db, scope).map((entry) => ({ erp_host: entry.erp_host, q_norm: entry.question.toLowerCase().trim(), answer: entry.answer }));
 }
 
-export function getLearnedContext(db: Database, erpHost: string): string {
-  const entries: MemoryEntry[] = listMemory(db, erpHost);
-  if (entries.length === 0) {
-    return EMPTY_LEARNED;
-  }
-  return entries.map((entry) => formatQa(entry.q_norm, entry.answer)).join(LEARNED_JOIN);
+export function getLearnedContext(db: Database, scope: MemoryScope): string {
+  return learnedContext(db, scope);
 }
 
 export async function createJob(input: JobInput, deps: OrchestratorDeps): Promise<JobView> {
@@ -58,8 +66,9 @@ export async function createJob(input: JobInput, deps: OrchestratorDeps): Promis
     status: JOB_STATUS_RUNNING,
     createdAt,
   });
+  if (deps.userId) deps.db.query(JOB_OWNERS_SQL.insert).run(jobId, deps.userId);
   emit({ type: EVENT_STARTED, jobId });
-  const learned: string = getLearnedContext(deps.db, parsed.erp_host);
+  const learned: string = getLearnedContext(deps.db, { erpHost: parsed.erp_host, userId: deps.userId ?? LEARNING.legacyOwner });
   return runStepsFrom(deps, {
     parsed,
     learned,
@@ -70,7 +79,7 @@ export async function createJob(input: JobInput, deps: OrchestratorDeps): Promis
   });
 }
 
-export async function answerQuestion(
+async function answerQueuedQuestion(
   input: AnswerInput,
   deps: OrchestratorDeps,
 ): Promise<JobView> {
@@ -96,17 +105,16 @@ export async function answerQuestion(
     erp_host: job.erp_host,
     profile_id: job.profile_id,
   });
-  upsertMemory(deps.db, {
-    erpHost: job.erp_host,
-    qNorm: question.q_norm,
-    answer: trimmedAnswer,
-    updatedAt: new Date().toISOString(),
-  });
-  answerQuestionRow(deps.db, { questionId: input.questionId, answer: trimmedAnswer });
+  const scope = { userId: deps.userId ?? LEARNING.legacyOwner, erpHost: job.erp_host };
+  const stored = learningQuestion(deps.db, { scope: scope, id: input.questionId });
+  const answer = await recordJobAnswer(deps, { scope, stored, answer: trimmedAnswer, supplier: parsed.invoice_json.supplier });
+  answerQuestionRow(deps.db, { questionId: input.questionId, answer });
   updateJobStatus(deps.db, { jobId: input.jobId, status: JOB_STATUS_RUNNING });
   const emit = makeEmit(deps);
   const collected: AgentResultIds = rebuildCollected(deps.db, input.jobId);
-  const learned: string = getLearnedContext(deps.db, job.erp_host);
+  const currentJobAnswers = listLearningQuestions(deps.db, { scope, sourceType: "job", sourceId: input.jobId })
+    .filter((item) => item.status === "answered").map(({ question, answer }) => ({ question, answer }));
+  const learned: string = JSON.stringify({ savedMemories: getLearnedContext(deps.db, scope), currentJobAnswers });
   const resume = pausedStep(deps.db, input.jobId);
   if (resume === undefined || resume.index >= STEP_ORDER.length) {
     return toView(deps.db, input.jobId);
@@ -119,4 +127,8 @@ export async function answerQuestion(
     collected,
     resume: { index: resume.index, taskId: resume.taskId },
   });
+}
+
+export function answerQuestion(input: AnswerInput, deps: OrchestratorDeps): Promise<JobView> {
+  return withChatLock(input.jobId, () => answerQueuedQuestion(input, deps));
 }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56">
+  <style>:root{--brand:#205b47;--paper:#f2f8f4;--tail:#a6c8b8}</style>
+  <rect width="56" height="56" rx="14" fill="var(--brand)"/>
+  <g transform="translate(0 4)">
+    <path d="M36 24L49 11C51 9 53 10 53 13V35C53 38 51 39 49 37L36 24Z" fill="var(--tail)"/>
+    <path d="M5 24C12 11 28 8 41 16L34 24L41 32C28 40 12 37 5 24Z" fill="var(--paper)"/>
+    <path d="M22 12C17 18 17 30 22 36L26 34C22 28 22 20 26 14Z" fill="var(--brand)"/>
+    <path d="M12 23A2 2 0 1 0 16 23A2 2 0 1 0 12 23Z" fill="var(--brand)"/>
+  </g>
+</svg>

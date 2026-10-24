@@ -9,10 +9,14 @@ import { Marker, MarkerContent } from "@/components/ui/marker";
 import { Message, MessageContent, MessageHeader } from "@/components/ui/message";
 import { MessageScroller, MessageScrollerButton, MessageScrollerContent, MessageScrollerItem, MessageScrollerProvider, MessageScrollerViewport } from "@/components/ui/message-scroller";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
+import { type ChatActivity } from "shared";
+import { ChatActivityTrace } from "@/components/chat-activity-trace";
+import { AssistantMarkdown, ResponseActions, ResponseSources } from "@/components/assistant-response";
 import { BrandMark } from "@/components/brand-logo";
 import { PlanningWelcome } from "@/components/planning-welcome";
 import { PlanningComposer } from "@/components/planning-composer";
+import { ChatQuestionnaire } from "@/components/chat-questionnaire";
+import { useQuestionnaire } from "@/hooks/use-questionnaire";
 import { useChatSend, useInvoice } from "@/hooks/use-planning-chat";
 import { type ChatMessage } from "@/lib/plan-api";
 import { HOME_COPY, HOME_QUERY } from "@/lib/home-config";
@@ -31,12 +35,14 @@ function ChatHeader() {
 function ConversationMessage({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
   const align = isUser ? "end" : "start";
-  return <div className="px-5 sm:px-8"><Message align={align}>
+  return <div className={cn("px-5 sm:px-8", !isUser && "pb-8")}><Message align={align}>
     <MessageContent>
       {!isUser && <MessageHeader><span className="flex items-center gap-2"><BrandMark className="h-5 w-6" />{HOME_COPY.assistant}</span></MessageHeader>}
+      {!isUser && <ChatActivityTrace activity={message.activity ?? []} />}
       <Bubble variant={isUser ? "secondary" : "ghost"} align={align}>
-        <BubbleContent className="whitespace-pre-wrap">{message.content}</BubbleContent>
+        <BubbleContent>{isUser ? <span className="whitespace-pre-wrap">{message.content}</span> : <AssistantMarkdown content={message.content} />}</BubbleContent>
       </Bubble>
+      {!isUser && <><ResponseSources citations={message.citations} /><ResponseActions content={message.content} /></>}
     </MessageContent>
   </Message></div>;
 }
@@ -48,9 +54,11 @@ interface HistoryProps {
   threadId: string | null;
   onPrompt: (prompt: string) => void;
   disabled: boolean;
+  activity: ChatActivity[];
+  questionnaire: ReturnType<typeof useQuestionnaire>;
 }
 
-function ChatHistory({ messages, loading, sending, threadId, onPrompt, disabled }: HistoryProps) {
+function ChatHistory({ messages, loading, sending, threadId, onPrompt, disabled, activity, questionnaire }: HistoryProps) {
   const seen = new Map<string, number>();
   const empty = messages.length === PLAN_LIMITS.firstStep && !loading;
   return <div className="min-h-0 flex-1">
@@ -65,7 +73,8 @@ function ChatHistory({ messages, loading, sending, threadId, onPrompt, disabled 
           const id = `${threadId ?? PLAN_ROUTES.home}:${signature}:${String(occurrence)}`;
           return <MessageScrollerItem key={id} messageId={id} scrollAnchor={message.role === "user"}><ConversationMessage message={message} /></MessageScrollerItem>;
         })}
-        {sending && <MessageScrollerItem><Marker role="status"><MarkerContent><Spinner />{HOME_COPY.sending}</MarkerContent></Marker></MessageScrollerItem>}
+        {(sending || activity.length > PLAN_LIMITS.firstStep) && <MessageScrollerItem><div className="px-5 pb-8 sm:px-8"><ChatActivityTrace activity={activity} working={sending} /></div></MessageScrollerItem>}
+        {(questionnaire.question ?? questionnaire.query.error) && <MessageScrollerItem><div className="px-5 pb-8 sm:px-8"><ChatQuestionnaire state={questionnaire} /></div></MessageScrollerItem>}
       </MessageScrollerContent>
     </MessageScrollerViewport><MessageScrollerButton /></MessageScroller></MessageScrollerProvider>
   </div>;
@@ -75,8 +84,9 @@ function Conversation({ threadId, invoice }: { threadId: string | null; invoice:
   const [mode, setMode] = useState<Mode>(PLAN_MODE.planning);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chat = useChatSend({ threadId, invoice: invoice.invoice, claimInvoice: invoice.claimThread });
+  const questionnaire = useQuestionnaire(threadId);
   const historyUnavailable = threadId !== null && !chat.thread.data && (chat.thread.isPending || chat.thread.isError);
-  const disabled = chat.sending || invoice.parsing || mode === PLAN_MODE.agent || historyUnavailable;
+  const disabled = [chat.sending, invoice.parsing, mode === PLAN_MODE.agent, historyUnavailable, questionnaire.blocked].some(Boolean);
   function choosePrompt(prompt: string) {
     chat.setDraft(prompt);
     inputRef.current?.focus();
@@ -85,7 +95,7 @@ function Conversation({ threadId, invoice }: { threadId: string | null; invoice:
     <ChatHeader />
     {mode === PLAN_MODE.agent && <Marker><MarkerContent>{PLAN_COPY.agentComing}</MarkerContent></Marker>}
     {chat.thread.isError && <div className="mx-auto w-full max-w-3xl px-5 sm:px-8"><Alert variant="destructive"><AlertDescription>{HOME_COPY.historyError}<Button variant="outline" size="sm" onClick={() => { void chat.thread.refetch(); }}>{HOME_COPY.retry}</Button></AlertDescription></Alert></div>}
-    <ChatHistory messages={chat.messages} loading={chat.thread.isPending && threadId !== null} sending={chat.sending} threadId={threadId} onPrompt={choosePrompt} disabled={disabled} />
+    <ChatHistory messages={chat.messages} loading={chat.thread.isPending && threadId !== null} sending={chat.sending} activity={chat.activity} threadId={threadId} onPrompt={choosePrompt} disabled={disabled} questionnaire={questionnaire} />
     <PlanningComposer chat={chat} invoice={invoice} disabled={disabled} inputRef={inputRef} mode={mode} setMode={setMode} />
   </main>;
 }

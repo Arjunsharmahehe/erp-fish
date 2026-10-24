@@ -87,6 +87,7 @@ function useJobStream(request: {
   useEffect(() => {
     const source = new EventSource(
       `${env.NEXT_PUBLIC_API_URL}${API_PATHS.jobStream.replace(ID_PARAM, jobId)}`,
+      { withCredentials: true },
     );
     source.addEventListener(STREAM_TASK_EVENT, (event: MessageEvent) => {
       append([STREAM_TASK_EVENT, event.data].join(SPACE));

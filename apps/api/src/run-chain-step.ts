@@ -6,13 +6,15 @@ import {
   TASK_STATUS_PAUSED,
   TASK_STATUS_RUNNING,
   type JobInput,
+  LEARNING,
 } from "shared";
+import { createLearningQuestion, listSavedMemories } from "./learning";
+import { findJobRow } from "./db";
 import {
   findCompletedOutput,
   insertQuestion,
   insertTask,
   updateTask,
-  findMemoryAnswer,
 } from "./db";
 import {
   EVENT_MEMORY_HIT,
@@ -30,6 +32,7 @@ import {
 } from "./types";
 
 
+const MISSING_JOB = "Job disappeared before asking a question.";
 function reuseCompletedOutput(
   deps: OrchestratorDeps,
   request: { parsed: JobInput; jobId: string; step: StepDef; emit: EmitFn },
@@ -39,6 +42,7 @@ function reuseCompletedOutput(
     invoiceNo: request.parsed.invoice_json.invoice_no,
     supplier: request.parsed.invoice_json.supplier,
     erpHost: request.parsed.erp_host,
+    userId: deps.userId,
   });
   if (reused === undefined) {
     return undefined;
@@ -96,8 +100,11 @@ function pauseForAnswer(
   deps: OrchestratorDeps,
   request: { jobId: string; taskId: string; emit: EmitFn; step: StepDef; question: string },
 ): ChainStep {
+  const job = findJobRow(deps.db, request.jobId);
+  if (!job) throw new Error(MISSING_JOB);
+  const question = createLearningQuestion(deps.db, { scope: { userId: deps.userId ?? LEARNING.legacyOwner, erpHost: job.erp_host }, sourceType: "job", sourceId: request.jobId, input: { question: request.question, context: job.instruction, choices: [] } });
   insertQuestion(deps.db, {
-    id: crypto.randomUUID(),
+    id: question.id,
     jobId: request.jobId,
     qNorm: request.question.toLowerCase().trim(),
     qRaw: request.question,
@@ -119,10 +126,8 @@ async function retryWithMemorizedAnswer(
     question: string;
   },
 ): Promise<ChainStep | undefined> {
-  const memorized: string | undefined = findMemoryAnswer(deps.db, {
-    erpHost: request.parsed.erp_host,
-    qNorm: request.question.toLowerCase().trim(),
-  });
+  const memorized = listSavedMemories(deps.db, { userId: deps.userId ?? LEARNING.legacyOwner, erpHost: request.parsed.erp_host })
+    .find((entry) => entry.question.toLowerCase().trim() === request.question.toLowerCase().trim() && entry.context === request.parsed.instruction)?.answer;
   if (memorized === undefined) {
     return undefined;
   }

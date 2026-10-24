@@ -17,15 +17,15 @@ function WorkspaceLink() {
   </Button>;
 }
 
-function LandingHeader() {
+function LandingHeader({ showAuth }: { showAuth: boolean }) {
   return <header className="landing-shell landing-header">
     <Link href={PLAN_ROUTES.landing} aria-label={LANDING_COPY.homeLabel} className="landing-brand-link"><BrandLogo className="h-10 w-auto" /></Link>
     <nav aria-label={LANDING_COPY.navigation} className="flex items-center gap-2 sm:gap-5">
       <a href={LANDING_SECTIONS.workflowLink} className="landing-nav-link hidden md:inline">{LANDING_COPY.how}</a>
       <a href={LANDING_SECTIONS.questionsLink} className="landing-nav-link hidden md:inline">{LANDING_COPY.questions}</a>
       <ThemeToggle />
-      <Button variant="ghost" nativeButton={false} render={<Link href={PLAN_ROUTES.login} />}>{LANDING_COPY.login}</Button>
-      <div className="hidden sm:block"><WorkspaceLink /></div>
+      {showAuth && <Button variant="ghost" nativeButton={false} render={<Link href={PLAN_ROUTES.login} />}>{LANDING_COPY.login}</Button>}
+      <div><WorkspaceLink /></div>
     </nav>
   </header>;
 }
@@ -103,7 +103,7 @@ function LandingClosing() {
   </section>;
 }
 
-function LandingFooter() {
+function LandingFooter({ showAuth }: { showAuth: boolean }) {
   return <footer className="landing-shell">
     <Separator />
     <div className="landing-grid py-12">
@@ -114,8 +114,8 @@ function LandingFooter() {
       <nav aria-label={LANDING_COPY.footerNavigation} className="landing-footer-nav">
         <div><h2 className="landing-note">{LANDING_COPY.productLinks}</h2><ul>
           <li><Link href={PLAN_ROUTES.home}>{LANDING_COPY.open}</Link></li>
-          <li><Link href={PLAN_ROUTES.signup}>{LANDING_COPY.createAccount}</Link></li>
-          <li><Link href={PLAN_ROUTES.login}>{LANDING_COPY.login}</Link></li>
+          {showAuth && <li><Link href={PLAN_ROUTES.signup}>{LANDING_COPY.createAccount}</Link></li>}
+          {showAuth && <li><Link href={PLAN_ROUTES.login}>{LANDING_COPY.login}</Link></li>}
         </ul></div>
         <div><h2 className="landing-note">{LANDING_COPY.exploreLinks}</h2><ul>
           <li><a href={LANDING_SECTIONS.workflowLink}>{LANDING_COPY.how}</a></li>
@@ -127,11 +127,11 @@ function LandingFooter() {
   </footer>;
 }
 
-export function LandingPage() {
+export function LandingPage({ showAuth }: { showAuth: boolean }) {
   return <div className="landing-theme">
     <a href={LANDING_SECTIONS.skipLink} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-3 focus:text-primary-foreground">{LANDING_COPY.skip}</a>
-    <LandingHeader />
+    <LandingHeader showAuth={showAuth} />
     <main id={LANDING_SECTIONS.main}><LandingHero /><LandingWorkflow /><LandingQuestions /><LandingClosing /></main>
-    <LandingFooter />
+    <LandingFooter showAuth={showAuth} />
   </div>;
 }

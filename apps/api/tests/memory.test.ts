@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import {
   DEMO_ANSWER,
+  LEARNING,
   DEMO_ERP_HOST,
   DEMO_ERP_HOST_2,
   DEMO_INSTRUCTION,
@@ -81,6 +82,7 @@ function goalAwareAgent(): AgentPort {
   const decide = (goal: string, orderId: string): Promise<AgentStepResult> =>
     Promise.resolve(goal.includes(DEMO_ANSWER) ? okResult(orderId) : doubtResult());
   return {
+    decideMemory: ({ question }) => Promise.resolve({ question, context: DEMO_INSTRUCTION }),
     runPurchaseOrder: (input: { goal: string }) => decide(input.goal, DEMO_PO_ID),
     runSalesOrder: (input: { goal: string; purchaseOrderId: string }) =>
       decide([input.purchaseOrderId, input.goal].join(JOIN_SPACE), DEMO_SO_ID),
@@ -88,6 +90,39 @@ function goalAwareAgent(): AgentPort {
       decide([input.purchaseOrderId, input.salesOrderId, input.goal].join(JOIN_SPACE), DEMO_STOCK_ID),
   };
 }
+
+test("an answer resumes the job even when the agent declines to save a memory", async () => {
+  const db = openDb();
+  const agent = { ...goalAwareAgent(), decideMemory: () => Promise.resolve(null) };
+  const paused = await createJob(makeInput(), { db, agent });
+  const questionId = requiredId(paused.questions[0]?.id);
+  const resumed = await answerQuestion({ jobId: paused.id, questionId, answer: DEMO_ANSWER }, { db, agent });
+  expect(resumed.status).toBe(JOB_STATUS_DONE);
+  expect(listMemory(db, { erpHost: DEMO_ERP_HOST, userId: LEARNING.legacyOwner })).toHaveLength(NO_QUESTIONS);
+  const next = await createJob(makeInput(DEMO_INVOICE_NO_2), { db, agent });
+  expect(next.status).toBe(JOB_STATUS_WAITING);
+});
+
+test("successive unsaved answers remain available throughout the current job", async () => {
+  const secondQuestion = "Confirm the warehouse for the sales step.";
+  const db = openDb();
+  const agent: AgentPort = {
+    decideMemory: () => Promise.resolve(null),
+    runPurchaseOrder: ({ goal }) => {
+      if (!goal.includes(DEMO_QUESTION_RAW)) return Promise.resolve(doubtResult());
+      if (!goal.includes(secondQuestion)) return Promise.resolve({ status: STEP_NEEDS_INPUT, question: secondQuestion });
+      return Promise.resolve(okResult(DEMO_PO_ID));
+    },
+    runSalesOrder: () => Promise.resolve(okResult(DEMO_SO_ID)),
+    runStockEntry: () => Promise.resolve(okResult(DEMO_STOCK_ID)),
+  };
+  const first = await createJob(makeInput(), { db, agent });
+  const second = await answerQuestion({ jobId: first.id, questionId: requiredId(first.questions[0]?.id), answer: DEMO_ANSWER }, { db, agent });
+  expect(second.status).toBe(JOB_STATUS_WAITING);
+  const last = await answerQuestion({ jobId: first.id, questionId: requiredId(second.questions.find((question) => question.status === QUESTION_STATUS_QUEUED)?.id), answer: DEMO_ANSWER }, { db, agent });
+  expect(last.status).toBe(JOB_STATUS_DONE);
+  expect(listMemory(db, { userId: LEARNING.legacyOwner, erpHost: DEMO_ERP_HOST })).toHaveLength(NO_QUESTIONS);
+});
 
 test("answering a queued question resumes the paused job and completes the chain", async () => {
   const db = openDb();
@@ -109,7 +144,7 @@ test("answering a queued question resumes the paused job and completes the chain
   const poTasks = resumed.tasks.filter((task) => task.kind === TASK_KIND_PO);
   expect(poTasks).toHaveLength(SINGLE_COUNT);
   expect(resumed.tasks.find((task) => task.kind === TASK_KIND_PO)?.status).toBe(TASK_STATUS_DONE);
-  expect(listMemory(db, DEMO_ERP_HOST)).toEqual([
+  expect(listMemory(db, { erpHost: DEMO_ERP_HOST, userId: LEARNING.legacyOwner })).toEqual([
     {
       erp_host: DEMO_ERP_HOST,
       q_norm: DEMO_QUESTION_NORM,
@@ -157,12 +192,12 @@ test("memory list shows the learned entry and count per host", async () => {
     { jobId: paused.id, questionId, answer: DEMO_ANSWER },
     { db, agent: goalAwareAgent() },
   );
-  const entries = listMemory(db, DEMO_ERP_HOST);
+  const entries = listMemory(db, { erpHost: DEMO_ERP_HOST, userId: LEARNING.legacyOwner });
   expect(entries).toHaveLength(SINGLE_COUNT);
   expect(entries.map((entry) => entry.answer)).toEqual([DEMO_ANSWER]);
-  expect(listMemory(db, DEMO_ERP_HOST_2)).toHaveLength(NO_QUESTIONS);
-  expect(getLearnedContext(db, DEMO_ERP_HOST)).toContain(DEMO_ANSWER);
-  expect(getLearnedContext(db, DEMO_ERP_HOST_2)).toBe(EMPTY_LEARNED_CONTEXT);
+  expect(listMemory(db, { erpHost: DEMO_ERP_HOST_2, userId: LEARNING.legacyOwner })).toHaveLength(NO_QUESTIONS);
+  expect(getLearnedContext(db, { erpHost: DEMO_ERP_HOST, userId: LEARNING.legacyOwner })).toContain(DEMO_ANSWER);
+  expect(getLearnedContext(db, { erpHost: DEMO_ERP_HOST_2, userId: LEARNING.legacyOwner })).toBe(EMPTY_LEARNED_CONTEXT);
 });
 
 test("blank answers are rejected without touching memory", async () => {
@@ -173,7 +208,7 @@ test("blank answers are rejected without touching memory", async () => {
   await expect(
     answerQuestion({ jobId: paused.id, questionId, answer: BLANK_ANSWER }, { db, agent: goalAwareAgent() }),
   ).rejects.toThrow();
-  expect(listMemory(db, DEMO_ERP_HOST)).toHaveLength(NO_QUESTIONS);
+  expect(listMemory(db, { erpHost: DEMO_ERP_HOST, userId: LEARNING.legacyOwner })).toHaveLength(NO_QUESTIONS);
 });
 
 test("answering an already-answered question throws and leaves the job done", async () => {

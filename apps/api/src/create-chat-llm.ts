@@ -4,6 +4,8 @@ import { ChatResultSchema } from "shared";
 import type { PlanChatLlmPort, PlanChatRequest } from "./chat";
 import { createPlanningTools } from "./create-planning-tools";
 import { env } from "./env";
+import { createChatProgress, type ActivityListener } from "./chat-progress";
+import { createLearningTools, type LearningToolContext } from "./learning-tools";
 
 const CHAT_THREAD_PREFIX = "plan-chat-" as const;
 const HISTORY_MESSAGE_PREFIX = "plan-chat-history-" as const;
@@ -14,7 +16,7 @@ const MODEL_OPTION_RESPONSE_FORMAT = "response_format" as const;
 const JSON_OBJECT_FORMAT = "json_object" as const;
 export const MISSING_CHAT_LLM_CONFIG_MESSAGE = "missing_llm_config_openai" as const;
 
-export function createChatLlm(options: { sessionId: string }): PlanChatLlmPort {
+export function createChatLlm(options: { sessionId: string; onActivity?: ActivityListener; learning?: LearningToolContext }): PlanChatLlmPort {
   const baseURL: string | undefined = env.OPENAI_BASE_URL;
   const apiKey: string | undefined = env.OPENAI_API_KEY;
   const model: string | undefined = env.OPENAI_MODEL;
@@ -47,7 +49,8 @@ export function createChatLlm(options: { sessionId: string }): PlanChatLlmPort {
           })),
         ],
         threadId: `${CHAT_THREAD_PREFIX}${crypto.randomUUID()}`,
-        tools: createPlanningTools(),
+        tools: [...createPlanningTools(), ...(options.learning ? createLearningTools(options.learning) : [])],
+        middleware: options.onActivity ? [createChatProgress(options.onActivity)] : [],
         // Go DeepSeek path rejects strict json_schema; json_object mode
         // still validates the parsed object against outputSchema.
         modelOptions: { [MODEL_OPTION_RESPONSE_FORMAT]: { type: JSON_OBJECT_FORMAT } },

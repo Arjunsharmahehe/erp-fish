@@ -81,7 +81,6 @@
   --sidebar-accent-foreground: oklch(0.34 0.06 165);
   --sidebar-border: oklch(0.916 0.012 155);
   --sidebar-ring: oklch(0.55 0.07 165);
-  --partner-logo-paper: oklch(1 0 0);
 }
 
 .dark {
@@ -121,9 +120,6 @@
 .partner-logo-surface {
   display: inline-flex;
   flex-shrink: 0;
-  background: var(--partner-logo-paper);
-  padding: calc(var(--spacing) * 2);
-  border-radius: var(--radius-md);
 }
 
 /* Landing composition inherits the shared ERP Fish light/dark palette. */
@@ -319,6 +315,26 @@ html.dark { color-scheme: dark; }
 }
 
 @layer base {
+.chat-markdown { min-width: 0; line-height: 1.75; overflow-wrap: anywhere; }
+.chat-markdown > * + * { margin-top: calc(var(--spacing) * 4); }
+.chat-markdown :is(h1, h2, h3, h4) { font-weight: 600; line-height: 1.4; text-wrap: balance; }
+.chat-markdown :is(h1, h2) { font-size: var(--text-lg); }
+.chat-markdown :is(h3, h4) { font-size: var(--text-base); }
+.chat-markdown > :is(h1, h2, h3, h4):not(:first-child) { margin-top: calc(var(--spacing) * 7); }
+.chat-markdown :is(ul, ol) { padding-left: calc(var(--spacing) * 6); }
+.chat-markdown ul { list-style-type: disc; }
+.chat-markdown ol { list-style-type: decimal; }
+.chat-markdown li + li { margin-top: calc(var(--spacing) * 2); }
+.chat-markdown li > p + p { margin-top: calc(var(--spacing) * 2); }
+.chat-markdown a { color: var(--primary); text-decoration: underline; text-underline-offset: .2em; }
+.chat-markdown a:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: var(--radius-sm); }
+.chat-markdown blockquote { border-left: 1px solid var(--border); padding-left: calc(var(--spacing) * 4); color: var(--muted-foreground); }
+.chat-markdown pre { max-width: 100%; overflow-x: auto; background: var(--muted); border-radius: var(--radius-lg); padding: calc(var(--spacing) * 4); }
+.chat-markdown code { font-family: var(--font-mono); font-size: .9em; }
+.chat-markdown :not(pre) > code { background: var(--muted); border-radius: var(--radius-sm); padding: .15em .35em; }
+.chat-markdown hr { border-color: var(--border); margin-block: calc(var(--spacing) * 6); }
+.chat-markdown [data-slot="table-cell"] { white-space: normal; min-width: 8rem; }
+
   * {
     @apply border-border outline-ring/50;
   }

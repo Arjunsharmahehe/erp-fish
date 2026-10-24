@@ -65,6 +65,8 @@ export const ChatThreadRowSchema = z.object({
   user_id: z.string(),
   title: z.string(),
   created_at: z.string(),
+  pinned: z.coerce.boolean(),
+  archived: z.coerce.boolean(),
 });
 
 export type ChatThreadRow = z.infer<typeof ChatThreadRowSchema>;

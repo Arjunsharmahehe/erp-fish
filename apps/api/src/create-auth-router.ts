@@ -19,9 +19,9 @@ import {
   verifyPassword,
   clearSessionCookie,
 } from "./auth";
-import { env } from "./env";
 import { logger } from "./logger";
-import { findUserByEmail, insertUser, updateUserConnection, type UserRow } from "./users";
+import { findUserByEmail, insertUser, findUserById, type UserRow } from "./users";
+import { updateConnection } from "./connections";
 
 const AUTH_LOG_MESSAGE = "auth_request" as const;
 const ONBOARDING_LOG_MESSAGE = "onboarding_request" as const;
@@ -104,11 +104,7 @@ export function createAuthRouter(db: Database) {
       logger.info({ route: API_PATHS.onboarding }, ONBOARDING_LOG_MESSAGE);
       const user = await readSessionUser(c, db);
       const body = c.req.valid("json");
-      // Keyless plan-mode: store host only. erp_username/erp_password
-      // validate but are never persisted; the keyed phase forwards them to
-      // Vault/profile-setup instead of SQLite.
-      const profileId: string | null = user.profile_id ?? env.TUNNEL_PROFILE_ID ?? null;
-      updateUserConnection(db, { userId: user.id, erpHost: body.erp_host, profileId });
-      return c.json(toSessionUser({ ...user, erp_host: body.erp_host, profile_id: profileId }));
+      updateConnection(db, { user, erpHost: body.erp_host });
+      return c.json(toSessionUser(findUserById(db, user.id) ?? user));
     });
 }
