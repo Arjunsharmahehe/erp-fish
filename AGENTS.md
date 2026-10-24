@@ -47,6 +47,10 @@ the wrong one. Prefer deleting the shallow copy over adding a wrapper.
 `bun run lint` and `bun check` are green before any ticket closes, plus
 `bunx react-doctor@latest --verbose` for web changes. A failing gate is fixed
 first — never worked around, never committed over.
+Agent-path changes (agent, goals, site, job-agent, routes touching them)
+additionally need the live mock-ERP loop green before merge: signup →
+onboard the mock host → `POST /api/jobs` (PO check-then-create returns a
+real ID) → re-run dedupes to the same ID. Paste the run IDs into LOOP_LOG.
 
 ## 9. TDD seams
 Test only at the confirmed seams in `specs/04`: A (Parse), B (Job

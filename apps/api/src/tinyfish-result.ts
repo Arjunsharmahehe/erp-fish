@@ -9,11 +9,11 @@ export const AGENT_RUN_CANCELLED_MESSAGE = "agent_run_cancelled" as const;
 export const AGENT_RUN_UNEXPECTED_STATUS_MESSAGE = "agent_run_unexpected_status" as const;
 
 const PoOkResultSchema = z.object({
-  purchase_order_id: z.string().min(MIN_TEXT_LENGTH),
+  purchase_order_id: z.string().trim().min(MIN_TEXT_LENGTH),
 });
 
 const PoQuestionResultSchema = z.object({
-  question: z.string().min(MIN_TEXT_LENGTH),
+  question: z.string().trim().min(MIN_TEXT_LENGTH),
 });
 
 export interface TinyfishRunOutcome {

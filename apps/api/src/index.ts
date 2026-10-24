@@ -26,7 +26,8 @@ import { createAuthRouter } from "./create-auth-router";
 import { findJobRow, findQuestionRow, openDb } from "./db";
 import { env } from "./env";
 import { createInvoiceLlm } from "./create-invoice-llm";
-import { persistPoRunId, resolveJobAgent, storedOrNull } from "./job-agent";
+import { isMockErpHost, persistPoRunId, resolveJobAgent, resolveJobSite, storedOrNull } from "./job-agent";
+import { canonicalHost } from "./site";
 import { logger } from "./logger";
 import { answerQuestion, createJob, getJob, listMemory } from "./orchestrator";
 import { parseInvoiceJson, parseInvoicePdf, parseInvoiceText } from "./parse";
@@ -111,11 +112,11 @@ const app = new Hono()
     };
     const agent = resolveJobAgent({
       erpHost,
-      profileId,
+      profileId: storedProfile,
       instruction: input.instruction,
-      allowReal: storedHost !== null && storedProfile !== null,
+      allowReal: storedHost !== null && (storedProfile !== null || isMockErpHost(erpHost)),
     });
-    const view = await createJob(input, { db: jobsDb, agent });
+    const view = await createJob(input, { db: jobsDb, agent, site: resolveJobSite(erpHost) });
     persistPoRunId({ db: jobsDb, jobId: view.id, agent });
     return c.json(view, CREATED_STATUS);
   })
@@ -167,17 +168,22 @@ const app = new Hono()
     if (job === undefined) {
       throw new HTTPException(NOT_FOUND_STATUS, { message: JOB_NOT_FOUND_MESSAGE });
     }
+    const sessionHost: string | null = storedOrNull(user.erp_host);
+    const sessionProfile: string | null = storedOrNull(user.profile_id);
     const agent = resolveJobAgent({
       erpHost: job.erp_host,
-      profileId: job.profile_id,
+      profileId: sessionProfile,
       instruction: job.instruction,
-      // Job keeps its original ERP affinity; the session only decides
-      // whether a real run is allowed at all (stored profile required).
-      allowReal: storedOrNull(user.erp_host) !== null && storedOrNull(user.profile_id) !== null,
+      // Job keeps its original ERP affinity: the session host must match
+      // the job host, plus a stored profile or the designated mock rig.
+      allowReal:
+        sessionHost !== null &&
+        canonicalHost(sessionHost) === canonicalHost(job.erp_host) &&
+        (sessionProfile !== null || isMockErpHost(job.erp_host)),
     });
     const view = await answerQuestion(
       { jobId: question.job_id, questionId, answer: c.req.valid("json").answer },
-      { db: jobsDb, agent },
+      { db: jobsDb, agent, site: resolveJobSite(job.erp_host) },
     );
     persistPoRunId({ db: jobsDb, jobId: view.id, agent });
     return c.json(view);

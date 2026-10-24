@@ -14,6 +14,7 @@ import {
   type JobEvent,
 } from "./events";
 import type { QaPair } from "./goals";
+import type { SiteProfile } from "./site";
 
 export const STEP_OK = "ok" as const;
 export const STEP_NEEDS_INPUT = "needs_input" as const;
@@ -42,6 +43,7 @@ export interface OrchestratorDeps {
   db: Database;
   agent: AgentPort;
   onEvent?: (event: JobEvent) => void;
+  site?: SiteProfile;
 }
 
 export interface StepDef {

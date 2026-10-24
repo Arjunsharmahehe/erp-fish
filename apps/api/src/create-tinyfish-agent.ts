@@ -16,6 +16,7 @@ import {
   type TinyfishRunOutcome,
 } from "./tinyfish-result";
 import type { AgentPort, AgentStepResult } from "./types";
+import type { SiteProfile } from "./site";
 
 export {
   AGENT_RESULT_INVALID_MESSAGE,
@@ -30,7 +31,6 @@ export const AGENT_POLL_TIMEOUT_MESSAGE = "agent_poll_timeout" as const;
 export const AGENT_STEP_NOT_ENABLED_MESSAGE = "agent_step_not_enabled_po_only" as const;
 const MISSING_TINYFISH_KEY_MESSAGE = "missing_tinyfish_api_key" as const;
 
-const PO_APP_PATH = "/app/purchase-order" as const;
 const AGENT_MAX_DURATION_SECONDS = 300 as const;
 const AGENT_POLL_INTERVAL_MS = 5000 as const;
 const AGENT_POLL_TIMEOUT_MS = 360000 as const;
@@ -41,13 +41,15 @@ const AGENT_POLL_RETRY_LOG_MESSAGE = "agent_poll_retry" as const;
 
 const PO_OUTPUT_SCHEMA = {
   type: "object",
-  properties: { purchase_order_id: { type: "string" } },
-  required: ["purchase_order_id"],
+  properties: {
+    purchase_order_id: { type: "string" },
+    question: { type: "string" },
+  },
 } as const;
 
 export interface TinyfishAgentOptions {
-  profileId: string;
-  erpHost: string;
+  site: SiteProfile;
+  profileId: string | null;
   onRunId?: (runId: string) => void;
 }
 
@@ -59,10 +61,13 @@ async function queuePoRun(
   try {
     queued = await client.agent.queue({
       goal: options.goal,
-      url: `${options.erpHost}${PO_APP_PATH}`,
+      url: options.site.poUrl,
       browser_profile: BrowserProfile.STEALTH,
-      use_profile: true,
-      profile_id: options.profileId,
+      // Profile-less runs sign in via the goal (site hints carry the test
+      // account); stored profiles attach for session persistence + Vault.
+      ...(options.profileId === null
+        ? {}
+        : { use_profile: true as const, profile_id: options.profileId }),
       use_vault: true,
       output_schema: { ...PO_OUTPUT_SCHEMA },
       // No max_steps: custom step caps need a beta entitlement on this

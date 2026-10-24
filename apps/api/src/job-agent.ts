@@ -6,6 +6,7 @@ import { createTinyfishAgent, type TinyfishAgent } from "./create-tinyfish-agent
 import { findTaskRows, updateTaskRunId } from "./db";
 import { DEMO_AGENT_ON, env } from "./env";
 import { logger } from "./logger";
+import { isMockHost, resolveSiteProfile, type SiteProfile } from "./site";
 import type { AgentPort } from "./types";
 
 const SERVICE_UNAVAILABLE_STATUS = 503 as const;
@@ -71,17 +72,33 @@ export function storedOrNull(value: string | null): string | null {
 }
 
 // Session values win; client values are the fallback so pre-onboarding demo
-// flows keep working. The REAL agent fires on stored values only: a client
-// must never trigger wallet spend by sending a profile_id (that restriction
-// lifts once onboarding persists profile_id and the fallback is removed).
+// flows keep working. The REAL agent fires when the session is onboarded
+// (stored host) plus either a stored profile or the designated profile-less
+// mock rig: a client must never trigger wallet spend by sending a profile_id
+// for an arbitrary host.
 export function resolveJobAgent(request: {
   erpHost: string;
-  profileId: string;
+  profileId: string | null;
   instruction: string;
   allowReal: boolean;
 }): AgentPort {
   if (request.allowReal && env.TINYFISH_API_KEY !== undefined) {
-    return createTinyfishAgent({ profileId: request.profileId, erpHost: request.erpHost });
+    return createTinyfishAgent({
+      site: resolveSiteProfile(request.erpHost, mockHost()),
+      profileId: request.profileId,
+    });
   }
   return requireDemoAgent(request.instruction);
+}
+
+export function resolveJobSite(erpHost: string): SiteProfile {
+  return resolveSiteProfile(erpHost, mockHost());
+}
+
+export function mockHost(): string | null {
+  return env.MOCK_ERP_URL ?? null;
+}
+
+export function isMockErpHost(erpHost: string): boolean {
+  return isMockHost(erpHost, mockHost());
 }

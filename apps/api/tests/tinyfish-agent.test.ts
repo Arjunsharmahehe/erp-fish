@@ -34,6 +34,18 @@ test("completed run with a question returns needs_input for the Q&A pause path",
   }
 });
 
+test("completed run with whitespace-only id and question throws invalid", () => {
+  expect(() =>
+    mapPoRunToStepResult(completed({ purchase_order_id: "   ", question: "  " })),
+  ).toThrow(AGENT_RESULT_INVALID_MESSAGE);
+});
+test("completed run with empty id but a question returns needs_input", () => {
+  const mapped = mapPoRunToStepResult(completed({ purchase_order_id: "", question: DEMO_QUESTION_RAW }));
+  expect(mapped.status).toBe(STEP_NEEDS_INPUT);
+  if (mapped.status === STEP_NEEDS_INPUT) {
+    expect(mapped.question).toBe(DEMO_QUESTION_RAW);
+  }
+});
 test("completed run with both id and question prefers the id", () => {
   const mapped = mapPoRunToStepResult(
     completed({ purchase_order_id: DEMO_PO_ID, question: DEMO_QUESTION_RAW }),

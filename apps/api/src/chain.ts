@@ -16,9 +16,15 @@ import { logger } from "./logger";
 import { createStepDefs } from "./create-step-defs";
 import { toView } from "./queries";
 import { runChainStep } from "./run-chain-step";
+import { resolveSiteProfile, type SiteProfile } from "./site";
 import type { ChainStep, OrchestratorDeps, StepDef } from "./types";
 
 const JOB_LOG_MESSAGE = "job_transition" as const;
+
+// Frappe default for direct orchestrator callers; routes pass a site.
+function jobSite(deps: OrchestratorDeps, erpHost: string): SiteProfile {
+  return deps.site ?? resolveSiteProfile(erpHost, null);
+}
 
 const COLLECTED_KEY_BY_KIND: Record<
   TaskKind,
@@ -76,6 +82,7 @@ export async function runStepsFrom(
     parsed: request.parsed,
     learned: request.learned,
     collected: request.collected,
+    site: jobSite(deps, request.parsed.erp_host),
   });
   try {
     let resumedTaskId: string | undefined = request.resume.taskId;

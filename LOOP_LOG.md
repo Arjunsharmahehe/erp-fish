@@ -322,3 +322,35 @@
   helpers to satisfy max-params/complexity/file-length rules.
 - Re-verified: check green, 35 tests green, curl loop green (401, demo
   done, server-fill, doubt->waiting->answer->re-pause per demo semantics).
+
+## Agent guidance + site profiles (2026-10-24, backend/agent-mode, uncommitted)
+- Gates doc updated (AGENTS.md rule 8): agent-path changes need the live
+  mock-ERP loop green (PO check-then-create + dedupe re-run) with run IDs
+  in LOOP_LOG before merge.
+- Generic-ERP answer: goals are task semantics; grounding is a per-connection
+  SiteProfile (entry URLs + hints). New `site.ts` (pure): Frappe defaults,
+  demo buying/selling/stock paths + sign-in hints; `resolveSiteProfile`.
+  Threaded as optional OrchestratorDeps.site (Frappe default; seam-B suite
+  untouched). Adapter takes site + nullable profile (profile-less runs sign
+  in via hints); MOCK_ERP_URL env; allowReal = stored host AND (stored
+  profile OR mock host) — clients can never buy spend on arbitrary hosts.
+- Guidance preamble in every goal (login/session, scope, masters rule,
+  exact numbers, dropdown waits, JSON-only finish). No test asserts wording.
+- Live: full-stack PO returns a REAL mock ID (run 8e2b209c proved
+  queue->COMPLETED; unaligned seeds correctly rejected as invalid, not
+  hallucinated). Dedupe leg blocked: mock is localStorage-only, so a saved
+  Browser Context Profile for the mock host is mandatory (manual user step).
+
+## Site-profile review fixes (2026-10-24, backend/agent-mode, uncommitted)
+- Second review (3 blockers) all fixed: B1 host normalization via
+  canonicalHost in site.ts (trailing-slash mock host now matches;
+  regression test added), B2 answer-route affinity (session host must
+  equal job host, normalized; job-row profile skew noted as follow-up
+  for the settings slice), B3 trim() on mapper schemas (whitespace-only
+  id/question now invalid, not DONE with garbage).
+- Nits fixed: EMPTY_HINTS const, mockHost() single source, env indent,
+  chain fallback extracted to jobSite helper, guidance blocked-clause
+  names the {"question"} JSON shape.
+- No live re-run: wire shape unchanged since the green provisioning run
+  (canonicalHost/trim/affinity are no-ops for the slash-less same-host
+  mock flow). Dedupe leg still waits on the manual mock-host profile.
