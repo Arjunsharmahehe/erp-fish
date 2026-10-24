@@ -13,7 +13,7 @@ interface ChatStreamOptions {
 
 export async function sendChatStream(options: ChatStreamOptions): Promise<ChatResponse> {
   const json = ChatRequestSchema.parse({
-    messages: options.messages.map(({ role, content }) => ({ role, content })),
+    messages: options.messages.map(({ role, content, original }) => ({ role, content, original })),
     mode: PLAN_MODE.planning,
     ...(options.threadId ? { thread_id: options.threadId } : {}),
     ...(options.invoice ? { invoice: options.invoice } : {}),

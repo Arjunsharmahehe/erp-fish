@@ -1,5 +1,5 @@
 "use client";
-
+import { useCopy } from "@/hooks/use-copy";
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -61,12 +61,13 @@ function useThreadManagement() {
 type ThreadState = ReturnType<typeof useThreadManagement>;
 
 function ThreadList({ state }: { state: ThreadState }) {
+  const t = useCopy();
   const { threads, visible, archived, pathname, selected, setOpenMobile, mutation, openDialog } = state;
   if (threads.isPending) return <Skeleton className="h-8 w-full" />;
-  if (visible?.length === HOME_KEYS.first) return <p className="px-2 py-3 text-xs leading-relaxed text-muted-foreground">{archived ? THREAD_COPY.noArchived : HOME_COPY.noThreads}</p>;
+  if (visible?.length === HOME_KEYS.first) return <p className="px-2 py-3 text-xs leading-relaxed text-muted-foreground">{archived ? t(THREAD_COPY.noArchived) : t(HOME_COPY.noThreads)}</p>;
   return <SidebarMenu>{visible?.map((thread) => <SidebarMenuItem key={thread.id}>
     <SidebarMenuButton isActive={pathname === PLAN_ROUTES.home && selected === thread.id} onClick={() => { setOpenMobile(false); }} render={<Link href={{ pathname: PLAN_ROUTES.home, query: { [HOME_QUERY.thread]: thread.id } }} />}>
-      {thread.pinned ? <PinIcon aria-label={THREAD_COPY.pinned} /> : <MessageSquareIcon />}<span>{thread.title}</span>
+      {thread.pinned ? <PinIcon aria-label={t(THREAD_COPY.pinned)} /> : <MessageSquareIcon />}<span>{thread.title}</span>
     </SidebarMenuButton>
     <ThreadActions thread={thread} pending={mutation.isPending} onDialog={openDialog} onUpdate={(update) => { mutation.mutate({ id: thread.id, update }); }} />
   </SidebarMenuItem>)}</SidebarMenu>;
@@ -80,16 +81,17 @@ function ThreadDialog({ state }: { state: ThreadState }) {
 }
 
 export function RecentThreads() {
+  const t = useCopy();
   const state = useThreadManagement();
   const { archived, setArchived, error, target, mutation } = state;
   return <SidebarGroup>
-    <SidebarGroupLabel>{archived ? THREAD_COPY.archived : HOME_COPY.recent}</SidebarGroupLabel>
+    <SidebarGroupLabel>{archived ? t(THREAD_COPY.archived) : t(HOME_COPY.recent)}</SidebarGroupLabel>
     <SidebarGroupContent>
-      {state.threads.isError && <div className="flex flex-col items-start gap-2 px-2 py-3"><p className="text-xs text-muted-foreground">{HOME_COPY.threadError}</p><Button size="sm" variant="outline" onClick={() => { void state.threads.refetch(); }}>{HOME_COPY.retry}</Button></div>}
+      {state.threads.isError && <div className="flex flex-col items-start gap-2 px-2 py-3"><p className="text-xs text-muted-foreground">{t(HOME_COPY.threadError)}</p><Button size="sm" variant="outline" onClick={() => { void state.threads.refetch(); }}>{t(HOME_COPY.retry)}</Button></div>}
       {error && !target && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
       <ThreadList state={state} />
       <Button variant="ghost" size="sm" disabled={mutation.isPending} className="mt-3 w-full justify-start" onClick={() => { setArchived(!archived); mutation.reset(); }}>
-        {archived ? <ArrowLeftIcon data-icon="inline-start" /> : <ArchiveIcon data-icon="inline-start" />}{archived ? THREAD_COPY.recent : THREAD_COPY.archived}
+        {archived ? <ArrowLeftIcon data-icon="inline-start" /> : <ArchiveIcon data-icon="inline-start" />}{archived ? t(THREAD_COPY.recent) : t(THREAD_COPY.archived)}
       </Button>
     </SidebarGroupContent>
     <ThreadDialog state={state} />

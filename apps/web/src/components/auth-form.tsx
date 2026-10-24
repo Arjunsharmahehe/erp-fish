@@ -1,5 +1,5 @@
 "use client";
-
+import { useCopy } from "@/hooks/use-copy";
 import { useState, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,12 +15,14 @@ import { PLAN_API, PLAN_COPY, PLAN_ROUTES } from "@/lib/plan-config";
 type AuthKind = typeof PLAN_API.login | typeof PLAN_API.signup;
 
 function AuthSwitch({ isSignup }: { isSignup: boolean }) {
+  const t = useCopy();
   return <CardFooter><Button nativeButton={false} variant="link" render={<Link href={isSignup ? PLAN_ROUTES.login : PLAN_ROUTES.signup} />}>
-    {isSignup ? PLAN_COPY.login : PLAN_COPY.signup}
+    {isSignup ? t(PLAN_COPY.login) : t(PLAN_COPY.signup)}
   </Button></CardFooter>;
 }
 
 export function AuthForm({ kind }: { kind: AuthKind }) {
+  const t = useCopy();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,23 +48,23 @@ export function AuthForm({ kind }: { kind: AuthKind }) {
     <main className="flex flex-1 items-center justify-center px-6 py-12">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{isSignup ? PLAN_COPY.signup : PLAN_COPY.login}</CardTitle>
-          <CardDescription>{PLAN_COPY.pitch}</CardDescription>
+          <CardTitle>{isSignup ? t(PLAN_COPY.signup) : t(PLAN_COPY.login)}</CardTitle>
+          <CardDescription>{t(PLAN_COPY.pitch)}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-5">
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="auth-email">{PLAN_COPY.email}</FieldLabel>
+                <FieldLabel htmlFor="auth-email">{t(PLAN_COPY.email)}</FieldLabel>
                 <Input id="auth-email" type="email" autoComplete="email" required value={email} onChange={(event) => { setEmail(event.target.value); }} />
               </Field>
               <Field>
-                <FieldLabel htmlFor="auth-password">{PLAN_COPY.password}</FieldLabel>
+                <FieldLabel htmlFor="auth-password">{t(PLAN_COPY.password)}</FieldLabel>
                 <Input id="auth-password" type="password" autoComplete={isSignup ? "new-password" : "current-password"} required minLength={MIN_PASSWORD_LENGTH} value={password} onChange={(event) => { setPassword(event.target.value); }} />
               </Field>
             </FieldGroup>
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-            <Button type="submit" disabled={pending}>{pending ? (isSignup ? PLAN_COPY.signingUp : PLAN_COPY.loggingIn) : (isSignup ? PLAN_COPY.signup : PLAN_COPY.login)}</Button>
+            <Button type="submit" disabled={pending}>{pending ? (isSignup ? t(PLAN_COPY.signingUp) : t(PLAN_COPY.loggingIn)) : (isSignup ? t(PLAN_COPY.signup) : t(PLAN_COPY.login))}</Button>
           </form>
         </CardContent>
         <AuthSwitch isSignup={isSignup} />

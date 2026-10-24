@@ -1,5 +1,5 @@
 "use client";
-
+import { useCopy } from "@/hooks/use-copy";
 import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -11,7 +11,8 @@ import { MessageScroller, MessageScrollerButton, MessageScrollerContent, Message
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ChatActivity } from "shared";
 import { ChatActivityTrace } from "@/components/chat-activity-trace";
-import { AssistantMarkdown, ResponseActions, ResponseSources } from "@/components/assistant-response";
+import { ResponseSources } from "@/components/assistant-response";
+import { TranslatedResponse } from "@/components/translated-response";
 import { BrandMark } from "@/components/brand-logo";
 import { PlanningWelcome } from "@/components/planning-welcome";
 import { PlanningComposer } from "@/components/planning-composer";
@@ -27,24 +28,29 @@ type Mode = typeof PLAN_MODE.planning | typeof PLAN_MODE.agent;
 type InvoiceState = ReturnType<typeof useInvoice>;
 
 function ChatHeader() {
+  const t = useCopy();
   return <div className="flex shrink-0 items-center px-5 py-5 sm:px-8">
-    <div><h1 className="text-base font-medium">{HOME_COPY.planning}</h1><p className="mt-1 text-xs text-muted-foreground">{HOME_COPY.planningDescription}</p></div>
+    <div><h1 className="text-base font-medium">{t(HOME_COPY.planning)}</h1><p className="mt-1 text-xs text-muted-foreground">{t(HOME_COPY.planningDescription)}</p></div>
   </div>;
 }
 
 function ConversationMessage({ message }: { message: ChatMessage }) {
+  const t = useCopy();
   const isUser = message.role === "user";
   const align = isUser ? "end" : "start";
   return <div className={cn("px-5 sm:px-8", !isUser && "pb-8")}><Message align={align}>
     <MessageContent>
-      {!isUser && <MessageHeader><span className="flex items-center gap-2"><BrandMark className="h-5 w-6" />{HOME_COPY.assistant}</span></MessageHeader>}
+      {!isUser && <MessageHeader><span className="flex items-center gap-2"><BrandMark className="h-5 w-6" />{t(HOME_COPY.assistant)}</span></MessageHeader>}
       {!isUser && <ChatActivityTrace activity={message.activity ?? []} />}
       <Bubble variant={isUser ? "secondary" : "ghost"} align={align}>
-        <BubbleContent>{isUser ? <span className="whitespace-pre-wrap">{message.content}</span> : <AssistantMarkdown content={message.content} />}</BubbleContent>
+        <BubbleContent>{isUser ? <UserMessage message={message} /> : <TranslatedResponse content={message.content} />}</BubbleContent>
       </Bubble>
-      {!isUser && <><ResponseSources citations={message.citations} /><ResponseActions content={message.content} /></>}
+      {!isUser && <ResponseSources citations={message.citations} />}
     </MessageContent>
   </Message></div>;
+}
+function UserMessage({ message }: { message: ChatMessage }) {
+  return <span className="whitespace-pre-wrap" lang={message.original?.language}>{message.original?.text ?? message.content}</span>;
 }
 
 interface HistoryProps {
@@ -59,13 +65,14 @@ interface HistoryProps {
 }
 
 function ChatHistory({ messages, loading, sending, threadId, onPrompt, disabled, activity, questionnaire }: HistoryProps) {
+  const t = useCopy();
   const seen = new Map<string, number>();
   const empty = messages.length === PLAN_LIMITS.firstStep && !loading;
   return <div className="min-h-0 flex-1">
     <MessageScrollerProvider autoScroll><MessageScroller><MessageScrollerViewport>
       <MessageScrollerContent className={cn("mx-auto w-full max-w-3xl", empty && "justify-center")}>
         {empty && <MessageScrollerItem><PlanningWelcome onPrompt={onPrompt} disabled={disabled} /></MessageScrollerItem>}
-        {loading && <MessageScrollerItem><div className="flex flex-col gap-4" role="status" aria-label={PLAN_COPY.loading}><Skeleton className="h-5 w-24" /><Skeleton className="h-16 w-3/4" /><Skeleton className="ml-auto h-12 w-1/2" /></div></MessageScrollerItem>}
+        {loading && <MessageScrollerItem><div className="flex flex-col gap-4" role="status" aria-label={t(PLAN_COPY.loading)}><Skeleton className="h-5 w-24" /><Skeleton className="h-16 w-3/4" /><Skeleton className="ml-auto h-12 w-1/2" /></div></MessageScrollerItem>}
         {messages.map((message) => {
           const signature = `${message.role}:${message.content}`;
           const occurrence = seen.get(signature) ?? PLAN_LIMITS.firstStep;
@@ -81,6 +88,7 @@ function ChatHistory({ messages, loading, sending, threadId, onPrompt, disabled,
 }
 
 function Conversation({ threadId, invoice }: { threadId: string | null; invoice: InvoiceState }) {
+  const t = useCopy();
   const [mode, setMode] = useState<Mode>(PLAN_MODE.planning);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chat = useChatSend({ threadId, invoice: invoice.invoice, claimInvoice: invoice.claimThread });
@@ -88,13 +96,13 @@ function Conversation({ threadId, invoice }: { threadId: string | null; invoice:
   const historyUnavailable = threadId !== null && !chat.thread.data && (chat.thread.isPending || chat.thread.isError);
   const disabled = [chat.sending, invoice.parsing, mode === PLAN_MODE.agent, historyUnavailable, questionnaire.blocked].some(Boolean);
   function choosePrompt(prompt: string) {
-    chat.setDraft(prompt);
+    chat.replaceDraft(prompt);
     inputRef.current?.focus();
   }
   return <main className="flex min-h-0 min-w-0 flex-1 flex-col">
     <ChatHeader />
-    {mode === PLAN_MODE.agent && <Marker><MarkerContent>{PLAN_COPY.agentComing}</MarkerContent></Marker>}
-    {chat.thread.isError && <div className="mx-auto w-full max-w-3xl px-5 sm:px-8"><Alert variant="destructive"><AlertDescription>{HOME_COPY.historyError}<Button variant="outline" size="sm" onClick={() => { void chat.thread.refetch(); }}>{HOME_COPY.retry}</Button></AlertDescription></Alert></div>}
+    {mode === PLAN_MODE.agent && <Marker><MarkerContent>{t(PLAN_COPY.agentComing)}</MarkerContent></Marker>}
+    {chat.thread.isError && <div className="mx-auto w-full max-w-3xl px-5 sm:px-8"><Alert variant="destructive"><AlertDescription>{t(HOME_COPY.historyError)}<Button variant="outline" size="sm" onClick={() => { void chat.thread.refetch(); }}>{t(HOME_COPY.retry)}</Button></AlertDescription></Alert></div>}
     <ChatHistory messages={chat.messages} loading={chat.thread.isPending && threadId !== null} sending={chat.sending} activity={chat.activity} threadId={threadId} onPrompt={choosePrompt} disabled={disabled} questionnaire={questionnaire} />
     <PlanningComposer chat={chat} invoice={invoice} disabled={disabled} inputRef={inputRef} mode={mode} setMode={setMode} />
   </main>;

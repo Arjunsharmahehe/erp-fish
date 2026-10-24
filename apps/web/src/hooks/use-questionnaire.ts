@@ -1,10 +1,14 @@
 "use client";
+import type { Locale, OriginalMessage } from "shared";
+import { useEnglishInput, useLanguage } from "@/components/language-provider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { answerQuestion, fetchQuestions, retryQuestion } from "@/lib/workspace-api";
 import { PLAN_API } from "@/lib/plan-config";
 import { WORKSPACE_QUERY, WORKSPACE_LIMITS } from "@/lib/workspace-config";
 
 export function useQuestionnaire(threadId: string | null) {
+  const englishInput = useEnglishInput();
+  const { locale } = useLanguage();
   const client = useQueryClient();
   const queryKey = [WORKSPACE_QUERY.questions, threadId];
   const query = useQuery({
@@ -21,7 +25,11 @@ export function useQuestionnaire(threadId: string | null) {
     refetchInterval: (state) => state.state.data?.some((item) => item.resume_status === "running") ? WORKSPACE_LIMITS.pollMs : false,
   });
   const mutation = useMutation({
-    mutationFn: (input: { id: string; answer?: string }) => input.answer === undefined ? retryQuestion(input.id) : answerQuestion(input.id, input.answer),
+    mutationFn: async (input: { id: string; answer?: string; choice?: string; language?: Locale; parts?: OriginalMessage[] }) => {
+      if (input.answer === undefined) return retryQuestion(input.id);
+      const translated = input.choice ? { content: input.choice, original: { text: input.answer, language: locale } } : await englishInput(input.answer, { source: input.language, parts: input.parts, interactive: true });
+      return answerQuestion(input.id, { answer: translated.content, original: translated.original });
+    },
     onSettled: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey }),

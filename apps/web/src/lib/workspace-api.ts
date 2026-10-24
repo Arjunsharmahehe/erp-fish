@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { OriginalMessage } from "shared";
 import { ChatResponseSchema, ConnectionStateSchema, ConnectionUpdateSchema, LearningQuestionSchema, MemoryEditSchema, QuestionAnswerSchema, SavedMemorySchema } from "shared";
 import { api } from "./api";
 import { WORKSPACE_COPY, WORKSPACE_LIMITS } from "./workspace-config";
@@ -32,7 +33,7 @@ export function saveConnection(erpHost: string) {
 export function prepareConnection() { return decodeResource(() => api.api.auth.connection.reconnect.$post(), ConnectionStateSchema); }
 export function refreshConnection() { return decodeResource(() => api.api.auth.connection.refresh.$post(), ConnectionStateSchema); }
 export function fetchQuestions(id: string) { return decodeResource(() => api.api.chat.threads[":id"].questions.$get({ param: { id } }), z.array(LearningQuestionSchema)); }
-export function answerQuestion(id: string, answer: string) {
-  return decodeResource(() => api.api.chat.questions[":id"].answer.$post({ param: { id }, json: QuestionAnswerSchema.parse({ answer }) }), ChatResponseSchema);
+export function answerQuestion(id: string, input: { answer: string; original?: OriginalMessage }) {
+  return decodeResource(() => api.api.chat.questions[":id"].answer.$post({ param: { id }, json: QuestionAnswerSchema.parse(input) }), ChatResponseSchema);
 }
 export function retryQuestion(id: string) { return decodeResource(() => api.api.chat.questions[":id"].retry.$post({ param: { id } }), ChatResponseSchema); }
