@@ -18,8 +18,15 @@ modules remain as fixtures; `create-job-router.ts` uses the generic executor.
 4. The browser agent discovers the site's navigation and forms. It performs only
    the requested task, searches for existing records before writes, and asks for
    missing or ambiguous data instead of inventing it.
+   Duplicate checks inspect candidate details even when the ERP has no source
+   reference field. A previously confirmed record for the same request is checked
+   first. Ambiguous matching candidates require user input before any write.
 5. Results, verified IDs, questions, answers, and browser run IDs stay with the
    chat. A question resumes the same task, submission policy, and browser profile.
+   Blockers render suggested answers as shadcn Questionnaire choices alongside a
+   custom-answer field. Nothing is selected automatically; Continue agent sends
+   the selected answer or the user's own text. Suggested answers are displayed in
+   the chosen language while their canonical English values reach the agent.
 
 Purchase Orders, Sales Orders, Stock Entries, and other records use the same
 requested-task flow. There is no automatic sequence of related documents.
@@ -71,7 +78,8 @@ run has stopped before unlocking the chat; this does not retry the task. A known
 run ID with an unverified result may be inspected again without enqueuing. Closure
 is blocked during inspection, and stale inspection results cannot overwrite a
 changed run. Blank/null optional questions normalize to absent; `needs_input`
-still requires a nonempty question.
+still requires a nonempty question. A fully empty optional memory object
+normalizes to no memory; partially invalid memory decisions remain rejected.
 
 The draft policy is an instruction to the remote browser agent, with an additional
 result check for reported submitted records. It is not a browser-level interception
@@ -82,6 +90,12 @@ Questions and assistant summaries remain English in storage. Existing client-sid
 translation displays them in English, Hindi, or Tamil. The agent decides whether
 the latest answered question contains a reusable preference; memory edits/deletes
 continue to take precedence.
+
+The provider result schema carries a bounded `choices` array, persisted with the
+existing learning question. Waiting run views expose the pending question and its
+choices. For older results, a contiguous numbered list is recognized only when
+the introduction explicitly asks the user to choose; numbered requirements and
+procedural steps remain free text.
 
 ## API
 
@@ -95,6 +109,7 @@ continue to take precedence.
 - `POST /api/agent/document`: authenticated raw PDF/text/JSON extraction, 10 MB
   limit and a bounded extracted-text size.
 - `GET /api/auth/settings`: includes account-scoped TinyFish Vault status.
+- `GET /api/auth/me`: supplies the signed-in email displayed in Settings.
 - `PUT /api/auth/settings/credentials`: retained local encrypted-store boundary;
   `{username, password}`; DELETE clears it. Neither operation configures remote login.
 
@@ -104,5 +119,11 @@ opens the corresponding chat. The old standalone `/parse` screen opens `/home`.
 ## Verification status
 
 See `LOOP_LOG.md` for exact gates and live run IDs. A successful login/profile
-save is separate from successful ERP creation. The main merge must wait for a
-live create → real ID → repeat → same ID loop; provider rejection is not a pass.
+save is separate from successful ERP creation. The original draft creation
+returned PO-2026-00002. Two subsequent API replays with TinyFish Vault both returned
+that same ID as an existing record, reporting no new creation. Typecheck, lint,
+51 API tests, and the frontend changed-scope review passed before the main merge.
+The earlier Vault test had created duplicate PO-2026-00003; it remains a draft
+pending explicit cleanup approval. The passing replays do not erase that incident
+or prove duplicate prevention for every ERP: the browser agent still follows
+prompt guidance rather than a deterministic ERP write interceptor.

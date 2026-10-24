@@ -477,3 +477,110 @@
   account returned zero Vault connections and zero items. Asked the user to connect
   the demo login and supply its item ID and ERP Fish account to assign. No secret
   values requested in chat. The live create/dedupe gate and merge remain pending.
+
+## Connected Vault verification and workspace corrections (2026-10-25)
+- Supersedes the account-setup blocker above: Bitwarden connection succeeded and
+  the approved Vault item is assigned to the existing test account and the user's
+  newly registered account by UUID and exact saved ERP URL. Normal account Vault
+  readiness was verified. No credential values are recorded here.
+- Fixed the ignored local CORS origin to match the web server on localhost:3002.
+  Login preflight returns 204 with the matching origin and credentials allowed.
+  The earlier failed signup had not created an account; signup subsequently worked.
+- Vault-backed API-only draft test completed:
+  job 0ed6de3b-09e5-448b-9584-8c2df73f828d,
+  chat 7d3e6c76-2c6f-4adb-b842-46f018503034,
+  TinyFish run 91b1d9b1-a6ca-4f2d-85af-49a2dd545d95,
+  draft PO-2026-00003. It used a fresh profile, use_vault=true, and the assigned
+  credential item. This is a successful creation, not a successful dedupe check.
+- Separately authorized read-only comparison run
+  57b568d4-1ec2-45f0-a2e6-4b3d01423b0e confirmed PO-2026-00003 duplicates
+  PO-2026-00002. Both remain drafts and neither stores the source reference.
+  That diagnostic used the browser port directly; it was not a POST /api/jobs
+  replay. No records were changed by the comparison. Duplicate deletion awaits
+  explicit user approval; no deletion or submission is claimed.
+- The comparison provider result exposed an empty optional memory object.
+  Added seam-B regression coverage (observed red, then green) and normalized only
+  fully empty memory metadata to null. API suite: 49 passed, 0 failed, 157 assertions.
+- Strengthened generic duplicate guidance to open and compare candidate details,
+  verify prior confirmed chat records, and pause on ambiguity when source references
+  are absent. This remains prompt guidance and is not claimed to prevent duplicates
+  until live verification succeeds. The create/dedupe gate and merge remain pending.
+- Settings now displays the authenticated account email with loading/error states
+  and English/Hindi/Tamil labels. Removed the ERP portal marker from the agent chat
+  header. The ERP address remains available in Settings and the task confirmation.
+  Astra reviewed the UI and backend correction with no actionable findings.
+  React Doctor changed scope: 24 files, 100/100, no issues.
+  Final bun run check passed (typechecks and lint in all workspaces).
+
+## Sent attachments and visible completion choice (2026-10-25)
+- New planning and agent messages persist attachment names in the existing chat
+  details table. History renders a shadcn Attachment above the user's prompt.
+  Accepted requests consume the composer attachment; planning keeps its invoice
+  context for follow-up questions. Preaccept failures preserve the draft and file.
+- Agent confirmation now uses full-width choices with a checkmark and a semantic
+  primary selected surface, explanatory text, and a start button naming draft or
+  submit. Draft remains the default. The vertical toggle forwards orientation to
+  Base UI for keyboard navigation; English/Hindi/Tamil action labels are provided.
+- Manual isolated checks passed: planning and agent attachment metadata survives
+  history reload, Unicode filenames work, assistant citations remain intact,
+  rejected streams do not consume the composer, and accepted streams acknowledge
+  once. Both completion selections render exactly one pressed option.
+- Astra review findings on preaccept failure handling and vertical keyboard
+  navigation were fixed; final review found no concrete regressions. Existing API
+  suite: 49 passed, 0 failed. React Doctor: 100/100, no issues.
+  Final bun run check passed across all workspaces (typecheck and lint).
+- Restarted the API after verifying no active agent runs. No ERP writes were
+  performed for this UI verification. The integration merge remains pending the
+  separately documented live duplicate-prevention gate.
+
+## Clickable browser-agent blocker questions (2026-10-25)
+- Confirmed the reported blocker stored its three answers inside the question
+  text, with an empty choices array. Added choices to the provider output contract,
+  persisted them with learning questions, and exposed them in waiting run views.
+- Agent blockers now use shadcn Questionnaire radio choices, number shortcuts, a
+  custom answer, dictation, and an explicit Continue agent button. No answer is
+  preselected. English/Hindi/Tamil display preserves canonical English choice
+  values; custom answers use the existing translation flow.
+- Legacy numbered choices are recovered only with explicit choice intent.
+  Numbered requests for multiple details remain free text. Added seam-B red/green
+  coverage for persistence/resume, legacy choices, and required-detail lists.
+  API suite: 51 passed, 0 failed, 165 assertions.
+- Astra review finding on numbered requirements was fixed; final review found no
+  remaining actionable issues, including the provider output schema. Manual
+  server-rendered markup checks confirmed three radio inputs, no default choice,
+  custom input, Continue agent, and number shortcuts. The actual saved blocker
+  normalized to three choices without modifying the user's completed run.
+- Restarted the API with the questionnaire change after confirming no active runs.
+- Final `bun run check` passed in all workspaces. React Doctor's changed scope
+  scanned 27 files: 100/100, no issues. Its full-project scan returned 78/100 with
+  15 pre-existing warnings in unchanged files. Reviewed the cancellation path
+  (the asynchronous path resets in finally), voice mutation (no cached resource
+  to invalidate), and ToastClose (aria-label is passed through Base UI). Remaining
+  warnings concern existing scaffold exports, semantic-role preferences, and
+  stateless text-list index keys. No lint configuration or diagnostics were hidden.
+
+## Final API replay verification and main integration (2026-10-25)
+- Supersedes the pending live-replay gate above. The original approved PDF test
+  created draft PO-2026-00002 in TinyFish run
+  b4b07048-620b-4400-890c-3836147f9ee3. The later Vault test created duplicate
+  PO-2026-00003; that incident and its comparison remain recorded above.
+- Replayed the original stored request/document through POST /api/jobs in the
+  existing isolated test account and chat 7d3e6c76-2c6f-4adb-b842-46f018503034.
+  Draft-only policy and scoped TinyFish Vault authentication remained enabled.
+  Job a754c65b-a662-4644-a001-d54ab3f3f0cd, TinyFish run
+  451ae005-8c32-4864-9f94-9452dda7f713 completed with PO-2026-00002, state existing.
+  The provider reported that no new record was created.
+- Repeated once to confirm stable selection amid the previously duplicated drafts:
+  job ff66131d-a3a3-4b27-be25-96d81e3934dd, TinyFish run
+  7731dd06-9f9e-4f72-9d6b-ad1b65d25a60 completed with the same PO-2026-00002,
+  state existing. Both successful API replays returned the original real ID.
+  These verify this fixture; they do not guarantee behavior for every ERP.
+- No ERP records were submitted or deleted by these checks. The duplicate
+  PO-2026-00003 remains pending explicit cleanup approval. The user's separate
+  completed jobs were not replayed or modified.
+- Final gates: bun run check green; 51 API tests, 0 failures; React Doctor changed
+  scope 100/100 with the full-project warning assessment above. Landing/workspace
+  return HTTP 200 on localhost:3002; the API is running on localhost:3001.
+- Integration is organized into five commits: backend/frontend merge, sent
+  attachment presentation, visible completion choices, blocker questionnaire,
+  and verification documentation. Local secret env files and databases are excluded.
