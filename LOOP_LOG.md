@@ -1,5 +1,23 @@
 # LOOP_LOG — erp-fish no-keys build loop
 
+## 04: Purchase Order autopilot slice
+- Seam: B (Job orchestrator) — createJob/getJob with stubbed AgentPort, real bun:sqlite :memory:.
+- Red-green: 4 tests first (missing modules), green; review fixes kept green. 12 pass total.
+- Reviews: Nemotron sweep — merged MIN constants already done in 03 follow-up;
+  removed orphan exports (InvoiceJSON/ParseRequest types, QUEUED statuses);
+  kept JobView/TaskView/QuestionView (live via getJob). Muse review 3 blockers
+  fixed (PO task now FAILED/PAUSED on throw/doubt paths, agent error logged +
+  carried on failed event, dropped `as unknown`); advisories accepted (STEP_*
+  in tests, goal-clause assertion, per-row safeParse guard, single-insert
+  reuse, log-in-emit with detail). Declined with reason: toView×4 (terminal
+  branches, helper already the abstraction), "ok" consolidation (separate
+  domains), toView throw (unreachable invariant), concurrency race (noted for
+  05/06 — single-runner demo), q_norm/dedupe case (reconcile in 06).
+- Deferred to 05: HTTP routes + SSE (no live adapter yet; 503-only route
+  would be dead code — agreed by reviewer).
+- Verified: typecheck x3 green; retry reuses PO-DEMO-0001 with 1 agent call;
+  doubt → waiting + queued question; throw → failed.
+
 ## 03: Invoice parse slice
 - Seam: A (Parse) — parseInvoice* via public interface, stubbed LLM, real unpdf.
 - Red-green: 5 tests first (module missing), green; then 3 more tests for

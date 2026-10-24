@@ -29,8 +29,6 @@ export const InvoiceJSONSchema = z.object({
   warehouse_hint: z.string().min(MIN_TEXT_LENGTH).optional(),
 });
 
-export type InvoiceJSON = z.infer<typeof InvoiceJSONSchema>;
-
 export const PARSE_OK = "ok" as const;
 export const PARSE_NEEDS_FIX = "needs_fix" as const;
 
@@ -68,8 +66,6 @@ export const ParseRequestSchema = z.object({
   invoiceJson: z.unknown().optional(),
 });
 
-export type ParseRequest = z.infer<typeof ParseRequestSchema>;
-
 export const DEMO_SUPPLIER = "DEMO-SUP-001" as const;
 export const DEMO_INVOICE_NO = "INV-DEMO-0001" as const;
 export const DEMO_ITEM_1 = "DEMO-ITEM-01" as const;
@@ -79,7 +75,7 @@ export const DEMO_RATE_1 = 150 as const;
 export const DEMO_QTY_2 = 5 as const;
 export const DEMO_RATE_2 = 200 as const;
 
-export const DEMO_INVOICE: InvoiceJSON = {
+export const DEMO_INVOICE: z.infer<typeof InvoiceJSONSchema> = {
   supplier: DEMO_SUPPLIER,
   invoice_no: DEMO_INVOICE_NO,
   items: [
@@ -87,3 +83,93 @@ export const DEMO_INVOICE: InvoiceJSON = {
     { name: DEMO_ITEM_2, qty: DEMO_QTY_2, rate: DEMO_RATE_2 },
   ],
 };
+
+export const JOB_STATUS_RUNNING = "running" as const;
+export const JOB_STATUS_WAITING = "waiting" as const;
+export const JOB_STATUS_DONE = "done" as const;
+export const JOB_STATUS_FAILED = "failed" as const;
+
+export const JobStatusSchema = z.enum([
+  JOB_STATUS_RUNNING,
+  JOB_STATUS_WAITING,
+  JOB_STATUS_DONE,
+  JOB_STATUS_FAILED,
+]);
+
+export type JobStatus = z.infer<typeof JobStatusSchema>;
+
+export const TASK_KIND_PO = "PO" as const;
+
+export const TaskKindSchema = z.enum([TASK_KIND_PO]);
+
+export type TaskKind = z.infer<typeof TaskKindSchema>;
+
+export const TASK_STATUS_RUNNING = "running" as const;
+export const TASK_STATUS_DONE = "done" as const;
+export const TASK_STATUS_FAILED = "failed" as const;
+export const TASK_STATUS_PAUSED = "paused" as const;
+
+export const TaskStatusSchema = z.enum([
+  TASK_STATUS_RUNNING,
+  TASK_STATUS_DONE,
+  TASK_STATUS_FAILED,
+  TASK_STATUS_PAUSED,
+]);
+
+export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+
+export const QUESTION_STATUS_QUEUED = "queued" as const;
+
+export const QuestionStatusSchema = z.enum([QUESTION_STATUS_QUEUED]);
+
+export type QuestionStatus = z.infer<typeof QuestionStatusSchema>;
+
+export const JobInputSchema = z.object({
+  invoice_json: InvoiceJSONSchema,
+  instruction: z.string().min(MIN_TEXT_LENGTH),
+  erp_host: z.string().min(MIN_TEXT_LENGTH),
+  profile_id: z.string().min(MIN_TEXT_LENGTH),
+});
+
+export type JobInput = z.infer<typeof JobInputSchema>;
+
+export const AgentResultIdsSchema = z.object({
+  purchase_order_id: z.string().min(MIN_TEXT_LENGTH).optional(),
+});
+
+export type AgentResultIds = z.infer<typeof AgentResultIdsSchema>;
+
+export const TaskViewSchema = z.object({
+  id: z.string().min(MIN_TEXT_LENGTH),
+  kind: TaskKindSchema,
+  status: TaskStatusSchema,
+  output_id: z.string().min(MIN_TEXT_LENGTH).nullable(),
+});
+
+export type TaskView = z.infer<typeof TaskViewSchema>;
+
+export const QuestionViewSchema = z.object({
+  id: z.string().min(MIN_TEXT_LENGTH),
+  q_raw: z.string().min(MIN_TEXT_LENGTH),
+  q_norm: z.string().min(MIN_TEXT_LENGTH),
+  status: QuestionStatusSchema,
+});
+
+export type QuestionView = z.infer<typeof QuestionViewSchema>;
+
+export const JobViewSchema = z.object({
+  id: z.string().min(MIN_TEXT_LENGTH),
+  status: JobStatusSchema,
+  result_ids: AgentResultIdsSchema,
+  tasks: z.array(TaskViewSchema),
+  questions: z.array(QuestionViewSchema),
+});
+
+export type JobView = z.infer<typeof JobViewSchema>;
+
+export const DEMO_ERP_HOST = "https://erp.demo.local" as const;
+export const DEMO_PROFILE_ID = "profile-demo-001" as const;
+export const DEMO_INSTRUCTION = "Create PO only" as const;
+export const DEMO_PO_ID = "PO-DEMO-0001" as const;
+export const DEMO_QUESTION_RAW = "Which warehouse should receive this stock?" as const;
+export const DEMO_QUESTION_NORM = "which warehouse should receive this stock?" as const;
