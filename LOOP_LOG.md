@@ -1,15 +1,46 @@
 # LOOP_LOG — erp-fish no-keys build loop
 
 ## Track 1 contract gaps
-- Track 1's frozen table says `POST /api/onboarding` returns `{user}`;
-  Track 2's table says it returns a bare `SessionUser`. The frontend currently
-  accepts either shape. Reconcile to one shape before the integrated run.
-- Auth/chat/thread response schemas are owned by Track 2 in `packages/shared`.
-  Track 1 keeps a temporary Zod bridge in `apps/web/src/lib/plan-api.ts` so
-  this branch typechecks in isolation. Replace it with shared imports in Track 3.
+- Resolved in Track 3: onboarding consumes Track 2's bare `SessionUser`.
+- Resolved in Track 3: auth/chat/thread boundaries now use shared schemas and
+  the inferred Hono client. The temporary frontend schema bridge is removed.
 - Thread detail currently returns messages without invoice context. The
   attached invoice is sent with the first chat request; a thread reopened after
   reload needs a reattachment unless Track 2 persists and returns that context.
+
+## Track 3 amendments — 2026-10-24
+- Integrated `origin/backend/plan-mode` at `e8f3153` into the frontend worktree.
+  Local web :3002 now uses the real API :3001, replacing the preview API :3101.
+  Local JWT secret is generated into ignored `apps/api/.env.local`.
+- Added shared AuthResponseSchema for signup/login envelopes. Requests use
+  Hono route inference, credentials included, and shared response validation.
+- Invoice attachment supports PDF and JSON. Other files receive a clear
+  unsupported-type message. Composer is compact with a plus attachment control
+  and an embedded Planning/Agent Select, as requested.
+- Keyless acceptance amendment: verify the backend's explicit degraded 200
+  notice; invoice-specific model answers require configured model credentials.
+  Do not substitute invented answers for a missing model. After keyless
+  verification, user supplied credentials in the main checkout's ignored env.
+  Copied only model/TinyFish settings into this worktree's ignored runtime env
+  and restarted the API, preserving the JWT secret and current sessions.
+- Legacy `/parse`, `/memory`, and `/jobs/[id]` remain the existing standalone
+  demo screens. Their relocation stays with the deferred agent/memory phase;
+  the plan-mode shell intentionally retains Memory/Settings placeholders.
+- Landing follows the supplied structure with shared green light/dark tokens.
+  A trusted static bootstrap sets the root theme before body paint, including
+  Base UI portal content. TinyFish's original SVG is unchanged in both modes.
+- Manual verification: real signup → host-only onboarding → home; JSON invoice
+  parse; planning degraded response with a persisted thread; reload restores
+  message history and dark preference. Agent selection remains an explicit
+  coming-next state and can switch back to Planning.
+- Backend suite: 26 passing. Initial sandbox run hit one 5s filesystem timeout;
+  unchanged suite outside that sandbox passed in 2.10s, with no timeout changes.
+- React Doctor: 13 pre-existing UI scaffold warnings, none in changed files.
+- Final integration checks: `bun run check` passed; logout redirects guarded
+  home to login, login restores the session; live model returned the frozen
+  invoice number, quantities 10/5 and line totals 1500/1000 through the UI.
+  Mobile sidebar and Select portals verified in dark mode. Astra reviews found
+  no remaining regressions in changed scope.
 
 > **Where things stand (2026-10-24):** all no-keys work is committed (8
 > commits, `b0b11e0` → `9c3d706`). Open the **KEYED PHASE** list at the
@@ -229,3 +260,71 @@
   edits shared/; gaps logged in LOOP_LOG for track 3.
 - Ports: backend lane defaults (:3000/:3001); frontend lane worktree
   ../erp-fish-frontend on frontend/plan-mode (api :3101, web :3002).
+
+## Track 2 backend plan-mode done (2026-10-24, on backend/plan-mode, unpushed)
+- Built all 8 routes per frozen contract: auth ×4, onboarding, chat ×3.
+  `bun run check` green (typecheck ×3, eslint ×4), `bun test` 26 pass
+  (21 existing + 5 seam-D). Manual curl loop green: signup 201 →
+  me → duplicate 409 → bad-login 401 → onboard host-only → keyless
+  degraded chat 200 + thread_id → continue thread → list/detail →
+  2nd-user foreign-thread 404 → unauth chat 401 → logout → me 401 →
+  login restores → tampered cookie 401. Passwords stored argon2-hashed,
+  fail-fast boot crash names JWT_SECRET, CORS credentials on.
+- Seam D confirmed by lane prompt (red-green with stubbed chat LLM first,
+  mirroring seam A); tests assert frozen literals only.
+- Structure: shared split into base/auth/chat barrel (max-file-length);
+  api split db into users/threads, index routes into create-auth-router/
+  create-chat-router via `.route()` (AppType preserved, hc probe OK).
+- Review fixes applied (Muse-family general subagent): title from first
+  USER-role message; cumulative-send contract (server diffs by stored
+  user count, client assistant msgs never stored) — track-2 doc updated,
+  Track 1 must send full history; seam-D test asserts frozen "fetch_url"/
+  "web_search" literals; ZodError from live LLM → typed 502; narrowed
+  tryCreateChatLlm catch to missing-config only; onboarding creds
+  accept-but-ignore commented (keyed Vault phase forwards, never SQLite).
+- Deferred (explicitly out of scope, not bugs): email normalization,
+  login dummy-verify (timing), thread-ownership dedupe on 3rd use.
+  Vault shows connected here because the shell env has TINYFISH_API_KEY;
+  keyless CI/dev without it degrades per contract.
+
+## Plan-mode TinyFish tools wired (2026-10-24, on backend/plan-mode, unpushed)
+- New apps/api/src/create-planning-tools.ts: web_search + fetch_url as
+  @tanstack/ai server tools (.server(execute)) backed by TinyFish SDK
+  search.query / fetch.getContents (zero new deps). Bounded outputs:
+  5 results, 500-char snippets, 8000-char markdown, purpose capped at
+  the SDK 2000-char limit. Fetch failures throw fetch_failed, which the
+  framework feeds back as output-error (model retries/answers anyway).
+- create-chat-llm.ts passes tools into chat() with outputSchema:
+  agentic structured output (run tools, then validated ChatResult).
+  Empty tools without keys = direct answer; prompt instructs tool use +
+  URL citations, names interpolated from constants.
+- Live-verified with the provided testing key (not stored anywhere):
+  search 10 hits -> 5 kept, fetch markdown 8000 chars, bad URL throws
+  fetch_failed, keyed route without LLM still degraded 200 (no crash).
+- Review fixes: fetch purpose forwarded (was dropped), markdown format
+  + tool names + caps as named constants, fetch-fail warn logs URL.
+  Declined: threading toolsAvailable (ambient env singleton is airtight),
+  tool unit tests (no confirmed seam; live-verified instead), threadId
+  in tool logs (port surface stays minimal).
+- Full agentic loop (model calling tools) still needs OPENAI_BASE_URL /
+  OPENAI_API_KEY / OPENAI_MODEL — no LLM key in this environment, so
+  that last mile is unverified until keys land.
+
+## Plan-mode live agentic loop via OpenCode Go (2026-10-24, backend/plan-mode)
+- Go endpoint (from docs): https://opencode.ai/inference/go/openai/v1/chat/
+  completions, model deepseek-v4.1-flash, key from user in gitignored
+  apps/api/.env.local (not committed). Free-tier console endpoint refused
+  (FreeTierError: usable only inside OpenCode; paid console has no funds).
+- Fixes to make the loop run: x-opencode-session header per thread
+  (Go 400s without it; thread UUID doubles as the session id),
+  User-Agent erp-fish-plan-mode, json_object modelOptions (this endpoint
+  rejects strict json_schema), system prompt via systemPrompts (in-messages
+  system entry is not honored on this path — wire capture proved it was
+  dropped), prompt demands JSON-only reply (gateway requires the word json).
+- Verified live: GST question over demo invoice -> 5 TinyFish tool calls,
+  answer cites invoice values + real URLs (cbic-gst.gov.in, indiafilings);
+  thread persists with live answer. Live text parse also fixed by the same
+  systemPrompts migration (create-invoice-llm.ts) and verified.
+- Review (Muse-family subagent): no blockers; nits applied. Declined:
+  threading toolsAvailable structurally (ambient env is airtight), unit
+  coverage of tool wiring (no confirmed seam; live-verified instead).

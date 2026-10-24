@@ -5,14 +5,14 @@ export const LANDING_COPY = Object.freeze({
   description: "Bring an invoice or a task to ERP Fish. Work through the details, clarify what is missing, and prepare your next step in ERPNext.",
   navigation: "Main navigation",
   skip: "Skip to content",
-  headline: "Less ERP busywork.",
-  headlineAccent: "More room to think.",
-  intro: "Turn invoices and everyday ERP tasks into a clear next step. Bring the details, work through the questions, and keep the plan in one place.",
+  headline: "ERP work,",
+  headlineAccent: "with a clearer way forward.",
+  intro: "Bring an invoice. Untangle the details. Turn everyday ERP work into a plan you can follow, all in one conversation.",
   open: "Open workspace",
   how: "How it works",
   questions: "Questions",
   login: "Log in",
-  heroNote: "Built for teams working in ERPNext.",
+  heroNote: "Built around ERPNext. Designed around your work.",
   example: "Example planning session",
   exampleTitle: "An invoice. A clear way forward.",
   exampleStatus: "Planning",
@@ -23,16 +23,22 @@ export const LANDING_COPY = Object.freeze({
   exampleQuestion: "Which warehouse should receive these items?",
   exampleQuestionHint: "Resolve the missing detail before proceeding.",
   exampleCaption: "A preview of the planning experience. No ERP changes are made in planning mode.",
-  workflowTitle: "From a loose task to a considered plan.",
-  workflowIntro: "Start with what you have. Make the next step clear before you move into your ERP.",
+  workflowTitle: "The details belong together.",
+  workflowIntro: "An invoice, a question, a next step. Keep the whole conversation in view before you move into your ERP.",
   nextTitle: "Plan today. Automation comes next.",
   nextDescription: "Browser-driven Purchase Orders, Sales Orders, and Stock Entries are the next step for ERP Fish. Agent mode is still in development.",
   partnerLabel: "Browser automation powered by",
   faqTitle: "A few things to know.",
-  closingTitle: "Give your next ERP task a little breathing room.",
-  closingDescription: "Open the workspace and start with a question.",
+  closingTitle: "Less back and forth. More forward.",
+  closingDescription: "Your next ERP task starts with a conversation.",
   footer: "A calmer place to plan your ERP work.",
   homeLabel: "ERP Fish landing page",
+  productLinks: "Workspace",
+  exploreLinks: "Explore",
+  createAccount: "Create account",
+  footerNavigation: "Footer navigation",
+  previewLabel: "Planning preview",
+  previewNote: "Sample data · No ERP writes",
 });
 
 export const LANDING_SECTIONS = Object.freeze({
@@ -57,8 +63,14 @@ export const LANDING_STEPS = [
 ];
 
 export const LANDING_QUESTIONS = [
-  { title: "Which ERP is this built for?", answer: "ERP Fish is being built around ERPNext. The workspace brings invoice context and planning conversations together." },
-  { title: "Will planning change my ERP data?", answer: "No. Planning mode helps you prepare and ask questions. Agent mode for executing ERP workflows is still in development." },
-  { title: "What can I explore right now?", answer: "The local preview includes the planning workspace, sample conversations, and navigation. Live planning, PDF parsing, and ERP actions depend on the connected API." },
-  { title: "Where does TinyFish fit in?", answer: "TinyFish provides the browser automation for the planned ERP workflows, so the agent can work through the ERP interface." },
+  { number: "01", title: "Which ERP is this built for?", answer: "ERP Fish is being built around ERPNext. The workspace brings invoice context and planning conversations together." },
+  { number: "02", title: "Will planning change my ERP data?", answer: "No. Planning mode helps you prepare and ask questions. Agent mode for executing ERP workflows is still in development." },
+  { number: "03", title: "What can I explore right now?", answer: "Explore the planning workspace and sample conversations in the local preview. Live planning, invoice parsing, and ERP actions are still being connected." },
+  { number: "04", title: "Where does TinyFish fit in?", answer: "TinyFish provides the browser automation for the planned ERP workflows, so the agent can work through the ERP interface." },
+];
+
+export const LANDING_FACTS = [
+  { title: "ERPNext", description: "Your ERP, in context" },
+  { title: "Planning first", description: "Prepare before making changes" },
+  { title: "One conversation", description: "Keep the details together" },
 ];

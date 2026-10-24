@@ -3,6 +3,7 @@
 import { useState, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MIN_PASSWORD_LENGTH } from "shared";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,7 +58,7 @@ export function AuthForm({ kind }: { kind: AuthKind }) {
               </Field>
               <Field>
                 <FieldLabel htmlFor="auth-password">{PLAN_COPY.password}</FieldLabel>
-                <Input id="auth-password" type="password" autoComplete={isSignup ? "new-password" : "current-password"} required value={password} onChange={(event) => { setPassword(event.target.value); }} />
+                <Input id="auth-password" type="password" autoComplete={isSignup ? "new-password" : "current-password"} required minLength={MIN_PASSWORD_LENGTH} value={password} onChange={(event) => { setPassword(event.target.value); }} />
               </Field>
             </FieldGroup>
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}

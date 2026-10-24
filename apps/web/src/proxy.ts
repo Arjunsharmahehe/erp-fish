@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SessionUserSchema } from "@/lib/plan-api";
+import { SessionUserSchema } from "shared";
 import { env } from "@/env";
 import { PLAN_API, PLAN_HTTP, PLAN_ROUTES } from "@/lib/plan-config";
 

@@ -13,7 +13,7 @@ export const HOME_COPY = Object.freeze({
   shortcutHint: "Ctrl / ⌘ + Enter to send",
   modeLabel: "Conversation mode",
   attach: "Attach invoice",
-  attachHint: "Add a PDF invoice for context",
+  attachHint: "Add a PDF or JSON invoice for context",
   sending: "Working on your plan…",
   threadError: "Conversations couldn’t load.",
   historyError: "This conversation couldn’t load. Try again to continue.",

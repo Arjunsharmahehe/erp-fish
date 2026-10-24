@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import { ChevronRightIcon, MessageSquareIcon, PlusIcon, LogOutIcon } from "lucide-react";
 import { Suspense, useState } from "react";
 import { BrandLogo, BrandMark } from "@/components/brand-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -96,7 +97,7 @@ function WorkspaceFooter() {
     <SidebarSeparator className="mx-0" />
     <a href={brand.tinyfishUrl} target="_blank" rel="noreferrer" aria-label={HOME_COPY.tinyfishLink} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring">
       <span className="text-xs text-muted-foreground">{HOME_COPY.builtWith}</span>
-      <Image src={brand.tinyfish} alt={brand.tinyfishAlt} width={brand.tinyfishWidth} height={brand.tinyfishHeight} className="partner-logo h-5 w-auto" />
+      <span className="partner-logo-surface"><Image src={brand.tinyfish} alt={brand.tinyfishAlt} width={brand.tinyfishWidth} height={brand.tinyfishHeight} className="h-5 w-auto" /></span>
     </a>
   </div></SidebarFooter>;
 }
@@ -112,7 +113,7 @@ function WorkspaceHeader() {
       <ChevronRightIcon className="hidden size-3 text-muted-foreground md:block" aria-hidden="true" />
       <span className="truncate text-sm font-medium">{title}</span>
     </div>
-    <VaultBadge />
+    <div className="flex shrink-0 items-center gap-2"><ThemeToggle /><VaultBadge /></div>
   </header>;
 }
 

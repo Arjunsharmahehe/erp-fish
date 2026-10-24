@@ -1,11 +1,15 @@
 import * as z from "zod";
+import {
+  HELLO_STATUS_OK,
+  InvoiceJSONSchema,
+  MIN_TEXT_LENGTH,
+  VAULT_CONNECTED,
+  VAULT_NOT_CONFIGURED,
+} from "./base";
 
-export const HELLO_STATUS_OK = "ok" as const;
-export const HELLO_MESSAGE = "Hello from erp-fish API" as const;
-export const MIN_TEXT_LENGTH = 1 as const;
-export const SPACE = " " as const;
-export const LABEL_SEPARATOR = ": " as const;
-export const CONTENT_TYPE_HEADER = "Content-Type" as const;
+export * from "./base";
+export * from "./auth";
+export * from "./chat";
 
 export const API_PATHS = {
   hello: "/api/hello",
@@ -16,26 +20,19 @@ export const API_PATHS = {
   questions: "/api/questions/:id/answer",
   memory: "/api/memory",
   profilesStatus: "/api/profiles/status",
+  authSignup: "/api/auth/signup",
+  authLogin: "/api/auth/login",
+  authLogout: "/api/auth/logout",
+  authMe: "/api/auth/me",
+  onboarding: "/api/onboarding",
+  chat: "/api/chat",
+  chatThreads: "/api/chat/threads",
+  chatThreadById: "/api/chat/threads/:id",
 } as const;
 
 export const HelloResponseSchema = z.object({
   status: z.literal(HELLO_STATUS_OK),
   message: z.string().min(MIN_TEXT_LENGTH),
-});
-
-export const MIN_ITEMS_COUNT = 1 as const;
-
-export const InvoiceItemSchema = z.object({
-  name: z.string().min(MIN_TEXT_LENGTH),
-  qty: z.number().positive(),
-  rate: z.number().positive(),
-});
-
-export const InvoiceJSONSchema = z.object({
-  supplier: z.string().min(MIN_TEXT_LENGTH),
-  invoice_no: z.string().min(MIN_TEXT_LENGTH),
-  items: z.array(InvoiceItemSchema).min(MIN_ITEMS_COUNT),
-  warehouse_hint: z.string().min(MIN_TEXT_LENGTH).optional(),
 });
 
 export const PARSE_OK = "ok" as const;
@@ -199,9 +196,6 @@ export const AnswerRequestSchema = z.object({
 });
 
 export type AnswerRequest = z.infer<typeof AnswerRequestSchema>;
-
-export const VAULT_CONNECTED = "connected" as const;
-export const VAULT_NOT_CONFIGURED = "not_configured" as const;
 
 export const ProfileStatusSchema = z.object({
   vault: z.enum([VAULT_CONNECTED, VAULT_NOT_CONFIGURED]),

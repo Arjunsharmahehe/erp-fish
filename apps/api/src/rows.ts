@@ -49,4 +49,34 @@ export const CompletedOutputRowSchema = z.object({
 
 export const MemoryAnswerRowSchema = z.object({ answer: z.string() });
 
+export const UserRowSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  password_hash: z.string(),
+  erp_host: z.string().nullable(),
+  profile_id: z.string().nullable(),
+  created_at: z.string(),
+});
+
+export type UserRow = z.infer<typeof UserRowSchema>;
+
+export const ChatThreadRowSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  title: z.string(),
+  created_at: z.string(),
+});
+
+export type ChatThreadRow = z.infer<typeof ChatThreadRowSchema>;
+
+export const ChatMessageRowSchema = z.object({
+  id: z.string(),
+  thread_id: z.string(),
+  role: z.string(),
+  content: z.string(),
+  created_at: z.string(),
+});
+
+export type ChatMessageRow = z.infer<typeof ChatMessageRowSchema>;
+
 export type ParsedInvoice = z.infer<typeof InvoiceJSONSchema>;

@@ -18,9 +18,10 @@ import {
   ParseRequestSchema,
   ProfileStatusSchema,
   QUESTION_STATUS_QUEUED,
-  VAULT_CONNECTED,
-  VAULT_NOT_CONFIGURED,
 } from "shared";
+import { currentVault } from "./auth";
+import { createChatRouter } from "./create-chat-router";
+import { createAuthRouter } from "./create-auth-router";
 import { findJobRow, findQuestionRow, openDb } from "./db";
 import { MISSING_DEMO_CONFIG_MESSAGE, createDemoAgent } from "./demoAgent";
 import { DEMO_AGENT_ON, env } from "./env";
@@ -71,7 +72,7 @@ function requireDemoAgent(instruction: string) {
 const jobsDb: Database = openDb(env.DB_PATH);
 
 const app = new Hono()
-  .use(CORS_WILDCARD_PATH, cors({ origin: env.CORS_ORIGIN }))
+  .use(CORS_WILDCARD_PATH, cors({ origin: env.CORS_ORIGIN, credentials: true }))
   .get(API_PATHS.hello, (c) => {
     const body = { status: HELLO_STATUS_OK, message: HELLO_MESSAGE };
     const parsed = HelloResponseSchema.parse(body);
@@ -170,11 +171,13 @@ const app = new Hono()
   .get(API_PATHS.profilesStatus, (c) => {
     return c.json(
       ProfileStatusSchema.parse({
-        vault: env.TINYFISH_API_KEY !== undefined ? VAULT_CONNECTED : VAULT_NOT_CONFIGURED,
+        vault: currentVault(),
         erp_host: env.ERP_BASE_URL ?? null,
       }),
     );
-  });
+  })
+  .route("/", createAuthRouter(jobsDb))
+  .route("/", createChatRouter(jobsDb));
 
 export type AppType = typeof app;
 

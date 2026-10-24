@@ -10,7 +10,6 @@ import { Message, MessageContent, MessageHeader } from "@/components/ui/message"
 import { MessageScroller, MessageScrollerButton, MessageScrollerContent, MessageScrollerItem, MessageScrollerProvider, MessageScrollerViewport } from "@/components/ui/message-scroller";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { BrandMark } from "@/components/brand-logo";
 import { PlanningWelcome } from "@/components/planning-welcome";
 import { PlanningComposer } from "@/components/planning-composer";
@@ -23,16 +22,9 @@ import { cn } from "@/lib/utils";
 type Mode = typeof PLAN_MODE.planning | typeof PLAN_MODE.agent;
 type InvoiceState = ReturnType<typeof useInvoice>;
 
-function ChatHeader({ mode, setMode }: { mode: Mode; setMode: (mode: Mode) => void }) {
-  return <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-8">
+function ChatHeader() {
+  return <div className="flex shrink-0 items-center px-5 py-5 sm:px-8">
     <div><h1 className="text-base font-medium">{HOME_COPY.planning}</h1><p className="mt-1 text-xs text-muted-foreground">{HOME_COPY.planningDescription}</p></div>
-    <ToggleGroup value={[mode]} onValueChange={(values) => {
-      const selected = values.at(PLAN_LIMITS.firstStep);
-      if (selected === PLAN_MODE.planning || selected === PLAN_MODE.agent) setMode(selected);
-    }} variant="outline" size="sm" aria-label={HOME_COPY.modeLabel}>
-      <ToggleGroupItem value={PLAN_MODE.planning}>{PLAN_COPY.planning}</ToggleGroupItem>
-      <ToggleGroupItem value={PLAN_MODE.agent}>{PLAN_COPY.agent}</ToggleGroupItem>
-    </ToggleGroup>
   </div>;
 }
 
@@ -90,11 +82,11 @@ function Conversation({ threadId, invoice }: { threadId: string | null; invoice:
     inputRef.current?.focus();
   }
   return <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-    <ChatHeader mode={mode} setMode={setMode} />
+    <ChatHeader />
     {mode === PLAN_MODE.agent && <Marker><MarkerContent>{PLAN_COPY.agentComing}</MarkerContent></Marker>}
     {chat.thread.isError && <div className="mx-auto w-full max-w-3xl px-5 sm:px-8"><Alert variant="destructive"><AlertDescription>{HOME_COPY.historyError}<Button variant="outline" size="sm" onClick={() => { void chat.thread.refetch(); }}>{HOME_COPY.retry}</Button></AlertDescription></Alert></div>}
     <ChatHistory messages={chat.messages} loading={chat.thread.isPending && threadId !== null} sending={chat.sending} threadId={threadId} onPrompt={choosePrompt} disabled={disabled} />
-    <PlanningComposer chat={chat} invoice={invoice} disabled={disabled} inputRef={inputRef} />
+    <PlanningComposer chat={chat} invoice={invoice} disabled={disabled} inputRef={inputRef} mode={mode} setMode={setMode} />
   </main>;
 }
 

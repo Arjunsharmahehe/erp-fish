@@ -1,3 +1,5 @@
+import { API_PATHS, CHAT_MODE_PLANNING } from "shared";
+
 export const PLAN_ROUTES = {
   landing: "/",
   login: "/login",
@@ -9,13 +11,13 @@ export const PLAN_ROUTES = {
 };
 
 export const PLAN_API = Object.freeze({
-  signup: "/api/auth/signup",
-  login: "/api/auth/login",
-  logout: "/api/auth/logout",
-  me: "/api/auth/me",
-  onboarding: "/api/onboarding",
-  chat: "/api/chat",
-  threads: "/api/chat/threads",
+  signup: API_PATHS.authSignup,
+  login: API_PATHS.authLogin,
+  logout: API_PATHS.authLogout,
+  me: API_PATHS.authMe,
+  onboarding: API_PATHS.onboarding,
+  chat: API_PATHS.chat,
+  threads: API_PATHS.chatThreads,
 });
 
 export const PLAN_COPY = {
@@ -29,6 +31,13 @@ export const PLAN_COPY = {
   signingUp: "Creating account…",
   authError: "We couldn't complete that request. Check your details and try again.",
   authUnavailable: "The service is unavailable. Try again shortly.",
+  unauthorized: "Your email or password is incorrect, or your session has expired. Please log in again.",
+  duplicateEmail: "This email is already registered. Log in to continue.",
+  notFound: "This conversation is unavailable. Start a new conversation.",
+  featureUnavailable: "This feature is not configured yet. You can attach an invoice as JSON or continue without it.",
+  invalidResponse: "The service returned an unexpected response. Please try again.",
+  invalidInvoiceJson: "This JSON does not match an invoice. Include supplier, invoice_no, and items with name, qty, and rate.",
+  unsupportedFile: "This file type is not supported yet. Add a PDF or JSON invoice.",
   onboardingTitle: "Connect your ERP",
   onboardingDescription: "Add your ERP host to start planning. Credentials can wait.",
   erpHost: "ERP host URL",
@@ -59,8 +68,8 @@ export const PLAN_COPY = {
   composePlaceholder: "Ask a question or describe a task…",
   send: "Send",
   sending: "Sending…",
-  attach: "Attach PDF invoice",
-  parseFailed: "The invoice could not be read. Check the PDF and try again.",
+  attach: "Attach PDF or JSON invoice",
+  parseFailed: "The invoice could not be read. Check the PDF or JSON and try again.",
   chatFailed: "The message could not be sent. Try again.",
   invoiceReady: "Invoice ready",
   invoiceMissing: "No invoice attached",
@@ -82,7 +91,7 @@ export const PLAN_HTTP = Object.freeze({
 });
 
 export const PLAN_MODE = Object.freeze({
-  planning: "planning",
+  planning: CHAT_MODE_PLANNING,
   agent: "agent",
 });
 
@@ -91,6 +100,14 @@ export const PLAN_LIMITS = {
   credentialsStep: 1,
   minLength: 1,
   nextOccurrence: 1,
+  composerRows: 1,
 };
 
 export const THREADS_QUERY_KEY = Object.freeze(["plan-threads"]);
+
+const UNAUTHORIZED_STATUS = 401;
+const CONFLICT_STATUS = 409;
+const NOT_FOUND_STATUS = 404;
+const UNAVAILABLE_STATUS = 503;
+export const PLAN_STATUS = Object.freeze({ unauthorized: UNAUTHORIZED_STATUS, conflict: CONFLICT_STATUS, notFound: NOT_FOUND_STATUS, unavailable: UNAVAILABLE_STATUS });
+export const INVOICE_FILE = Object.freeze({ jsonExtension: ".json", pdfExtension: ".pdf" });
