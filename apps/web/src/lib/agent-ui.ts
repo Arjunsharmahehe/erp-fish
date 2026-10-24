@@ -7,6 +7,8 @@ export const agentUi = Object.freeze({
   title: "Agent", description: "Your task, carried out in your ERP.", hint: "The agent can change your ERP. You’ll choose draft or submit before it starts.",
   confirmTitle: "How should the agent finish?", confirmDescription: "Choose what the agent is allowed to do in your connected ERP for this request.",
   draft: "Save as draft", draftHint: "Fill the details and save a draft for you to review.", submit: "Create and submit", submitHint: "Fill the details and finalize the requested forms.",
+  startDraft: "Start with draft", startSubmit: "Start and submit",
+  answerHint: "Choose an option or write your own answer.", customAnswer: "Write your own answer…", answerRequired: "Choose an option or enter an answer to continue.",
   run: "Start agent", cancel: "Cancel", target: "Connected ERP", fileReady: "Document ready", fileError: "Add a readable PDF, text, or JSON file smaller than 10 MB.",
   starting: "Preparing your ERP session", working: "Working in your ERP", waiting: "Waiting for your answer", complete: "Task completed", failed: "Could not start the agent", uncertain: "Check your ERP", runId: "Browser run", details: "Run details", reply: "Your answer", continue: "Continue agent", continuing: "Continuing…", response: "Agent activity", requestFailed: "The agent request could not be completed.",
   loginTitle: "ERP login", loginDescription: "Store your ERP login securely for browser tasks. Credentials are encrypted on this server and filled directly into your ERP’s login form.",
