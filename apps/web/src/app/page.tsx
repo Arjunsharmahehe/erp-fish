@@ -1,12 +1,16 @@
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
-import { HelloResponseSchema } from "shared";
+import { HelloResponseSchema, LABEL_SEPARATOR } from "shared";
 
 const PAGE_TITLE = "erp-fish" as const;
 const PAGE_DESCRIPTION = "API round-trip status" as const;
 const STATUS_LABEL = "Hello response" as const;
-const SEPARATOR = ": " as const;
 const API_ERROR_MESSAGE = "API hello request failed" as const;
+const PARSE_LINK_LABEL = "Parse an invoice" as const;
+const PARSE_HREF = "/parse" as const;
+const MEMORY_LINK_LABEL = "View learned memory" as const;
+const MEMORY_HREF = "/memory" as const;
 
 export default async function Home() {
   const res = await api.api.hello.$get();
@@ -27,8 +31,14 @@ export default async function Home() {
         <CardContent>
           <p>
             {STATUS_LABEL}
-            {SEPARATOR}
+            {LABEL_SEPARATOR}
             {message}
+          </p>
+          <p>
+            <Link href={PARSE_HREF}>{PARSE_LINK_LABEL}</Link>
+          </p>
+          <p>
+            <Link href={MEMORY_HREF}>{MEMORY_LINK_LABEL}</Link>
           </p>
         </CardContent>
       </Card>

@@ -1,5 +1,29 @@
 # LOOP_LOG — erp-fish no-keys build loop
 
+## 07-minus-rehearsal (no live calls; rehearsal itself blocked on keys/tunnel)
+- Routes: POST /api/jobs (201, zValidator), GET job (404), GET stream (SSE
+  replay of tasks/questions/done), POST questions answer (400/404),
+  GET memory, GET profiles/status (env presence only, no secret leak).
+  Demo agent (DEMO_AGENT=true) serves canned IDs; "doubt" in instruction
+  triggers needs_input. Live adapter + background + live SSE tailing deferred.
+- Web: header VaultBadge, home links, parse page job start + redirect,
+  /jobs/[id] (server initial + EventSource/poll/timer/answer form/time-saved
+  vs 25-min baseline/learned count), /memory list + count.
+- Reviews: sweep — shared SEPARATOR/SPACE/CONTENT_TYPE_HEADER hoists in,
+  VAULT_CONNECTED compare, api README port, questions log label
+  (2nd finding false positive: infra .env.example exists; root README refs
+  verified); Muse — 2 blockers fixed (answer 400/404 mapping, URL derivation
+  from API_PATHS), poll gating via useEffectEvent, doctor clean on new files.
+- Web tsconfig lesson: explicit types:["bun",...] needed so bun:sqlite
+  ambient types load through the api import graph (-> AGENTS.md? no — one-off
+  tooling fix, not project law).
+- Verified: all pages 200, job page server-renders all 3 IDs + timer +
+  learned label; curl: POST/GET/stream/answer/memory/status + 404s;
+  typecheck x3 green; 21 tests pass.
+- Keys present in shell env (TINYFISH_API_KEY) were NEVER used — no live
+  browser/LLM calls made in any ticket. Remaining for keyed phase: tunnel
+  live + first-run seed, Profile/Vault proof, live adapter, rehearsal.
+
 ## 02-infra-only (no keys, no daemon on this box)
 - Wrote: infra/erpnext/{README,.env.example,seed.env.example},
   infra/tunnel/{README,cloudflared.yml}, apps/api/scripts/seed-erpnext.ts

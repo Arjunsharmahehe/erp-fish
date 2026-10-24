@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useRef, useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { env } from "@/env";
-import { API_PATHS, ParseResultSchema, type ParseResult } from "shared";
+import { API_PATHS, CONTENT_TYPE_HEADER, JobViewSchema, LABEL_SEPARATOR, ParseResultSchema, type ParseResult } from "shared";
 
 const PAGE_TITLE = "Parse invoice" as const;
 const PAGE_DESCRIPTION = "Upload the demo PDF or paste JSON to preview trusted invoice data" as const;
@@ -25,9 +26,12 @@ const UNKNOWN_ERROR_MESSAGE = "parse_request_failed" as const;
 const REQUEST_FAILED_STATUS_MESSAGE = "parse_request_failed_status" as const;
 const NO_FILE_MESSAGE = "choose_a_pdf_file_first" as const;
 const JSON_INDENT = 2 as const;
-const CONTENT_TYPE_HEADER = "Content-Type" as const;
 const METHOD_POST = "POST" as const;
-const SEPARATOR = ": " as const;
+const INSTRUCTION_LABEL = "Instruction" as const;
+const INSTRUCTION_PLACEHOLDER = "Create PO, SO, and Stock Entry…" as const;
+const START_JOB_BUTTON = "Start autopilot job" as const;
+const JOB_HREF_PREFIX = "/jobs/" as const;
+const DEFAULT_INSTRUCTION = "Create PO, SO, and Stock Entry" as const;
 
 type ViewState =
   | { kind: "idle" }
@@ -38,8 +42,10 @@ type ViewState =
 const INITIAL_STATE: ViewState = { kind: "idle" };
 
 export default function ParsePage() {
+  const router = useRouter();
   const fileRef = useRef<File | null>(null);
   const [pasted, setPasted] = useState<string>("");
+  const [instruction, setInstruction] = useState<string>(DEFAULT_INSTRUCTION);
   const [state, setState] = useState<ViewState>(INITIAL_STATE);
 
   const parseUrl: string = `${env.NEXT_PUBLIC_API_URL}${API_PATHS.parse}`;
@@ -47,7 +53,7 @@ export default function ParsePage() {
   function parseFailedStatus(status: number): void {
     setState({
       kind: "failed",
-      message: `${REQUEST_FAILED_STATUS_MESSAGE}${SEPARATOR}${status}`,
+      message: `${REQUEST_FAILED_STATUS_MESSAGE}${LABEL_SEPARATOR}${status}`,
     });
   }
 
@@ -111,6 +117,36 @@ export default function ParsePage() {
     fileRef.current = selected ?? null;
   }
 
+  async function startJob(): Promise<void> {
+    if (state.kind !== "done" || state.result.status !== "ok") {
+      return;
+    }
+    setState({ kind: "loading" });
+    try {
+      const res = await fetch(`${env.NEXT_PUBLIC_API_URL}${API_PATHS.jobs}`, {
+        method: METHOD_POST,
+        headers: { [CONTENT_TYPE_HEADER]: JSON_MIME },
+        body: JSON.stringify({
+          invoice_json: state.result.invoice,
+          instruction,
+          erp_host: env.NEXT_PUBLIC_ERP_HOST,
+          profile_id: env.NEXT_PUBLIC_PROFILE_ID,
+        }),
+      });
+      if (!res.ok) {
+        parseFailedStatus(res.status);
+        return;
+      }
+      const view = JobViewSchema.parse(await res.json());
+      router.push(`${JOB_HREF_PREFIX}${view.id}`);
+    } catch (error) {
+      setState({
+        kind: "failed",
+        message: error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE,
+      });
+    }
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-background text-foreground">
       <Card>
@@ -131,12 +167,25 @@ export default function ParsePage() {
           </Button>
           <Label>{RESULT_LABEL}</Label>
           {state.kind === "done" ? (
-            <pre>{JSON.stringify(state.result, null, JSON_INDENT)}</pre>
+            <>
+              <pre>{JSON.stringify(state.result, null, JSON_INDENT)}</pre>
+              {state.result.status === "ok" ? (
+                <>
+                  <Label>{INSTRUCTION_LABEL}</Label>
+                  <Input
+                    placeholder={INSTRUCTION_PLACEHOLDER}
+                    value={instruction}
+                    onChange={(event) => setInstruction(event.target.value)}
+                  />
+                  <Button onClick={() => void startJob()}>{START_JOB_BUTTON}</Button>
+                </>
+              ) : null}
+            </>
           ) : null}
           {state.kind === "failed" ? (
             <p>
               {ERROR_LABEL}
-              {SEPARATOR}
+              {LABEL_SEPARATOR}
               {state.message}
             </p>
           ) : null}

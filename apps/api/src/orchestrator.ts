@@ -72,6 +72,7 @@ export type JobEvent = {
   taskId?: string;
   orderId?: string;
   reason?: string;
+  at: string;
 };
 
 export const STEP_OK = "ok" as const;
@@ -289,6 +290,7 @@ export function getJob(db: Database, jobId: string): JobView | undefined {
   return JobViewSchema.parse({
     id: job.id,
     status: job.status,
+    erp_host: job.erp_host,
     result_ids: job.result_ids === null ? {} : JSON.parse(job.result_ids),
     tasks,
     questions,
@@ -400,19 +402,21 @@ export async function answerQuestion(
   });
 }
 
-function makeEmit(deps: OrchestratorDeps): (event: JobEvent) => void {
-  return (event: JobEvent): void => {
+function makeEmit(deps: OrchestratorDeps): (event: Omit<JobEvent, "at">) => void {
+  return (event: Omit<JobEvent, "at">): void => {
+    const stamped: JobEvent = { ...event, at: new Date().toISOString() };
     logger.info(
       {
-        jobId: event.jobId,
-        taskId: event.taskId,
-        type: event.type,
-        orderId: event.orderId,
-        reason: event.reason,
+        jobId: stamped.jobId,
+        taskId: stamped.taskId,
+        type: stamped.type,
+        orderId: stamped.orderId,
+        reason: stamped.reason,
+        at: stamped.at,
       },
       JOB_LOG_MESSAGE,
     );
-    deps.onEvent?.(event);
+    deps.onEvent?.(stamped);
   };
 }
 
@@ -421,7 +425,7 @@ async function runStepsFrom(
   parsed: JobInput,
   learned: string,
   jobId: string,
-  emit: (event: JobEvent) => void,
+  emit: (event: Omit<JobEvent, "at">) => void,
   collected: AgentResultIds,
   resume: { index: number; taskId: string | undefined },
 ): Promise<JobView> {
@@ -506,7 +510,7 @@ function haltJob(
   jobId: string,
   collected: AgentResultIds,
   status: typeof JOB_STATUS_WAITING | typeof JOB_STATUS_FAILED,
-  emit: (event: JobEvent) => void,
+  emit: (event: Omit<JobEvent, "at">) => void,
 ): JobView {
   updateJobResultIds(deps.db, jobId, collected);
   updateJobStatus(deps.db, jobId, status);
@@ -517,7 +521,7 @@ async function runChainStep(
   deps: OrchestratorDeps,
   parsed: JobInput,
   jobId: string,
-  emit: (event: JobEvent) => void,
+  emit: (event: Omit<JobEvent, "at">) => void,
   step: StepDef,
   resumedTaskId: string | undefined,
 ): Promise<ChainStep> {
@@ -598,7 +602,7 @@ async function invokeStep(
   deps: OrchestratorDeps,
   jobId: string,
   taskId: string,
-  emit: (event: JobEvent) => void,
+  emit: (event: Omit<JobEvent, "at">) => void,
   step: StepDef,
   qa: QaPair | undefined,
 ): Promise<StepAttemptResult> {

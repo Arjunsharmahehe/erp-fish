@@ -4,10 +4,18 @@ export const HELLO_STATUS_OK = "ok" as const;
 export const HELLO_MESSAGE = "Hello from erp-fish API" as const;
 export const MIN_TEXT_LENGTH = 1 as const;
 export const SPACE = " " as const;
+export const LABEL_SEPARATOR = ": " as const;
+export const CONTENT_TYPE_HEADER = "Content-Type" as const;
 
 export const API_PATHS = {
   hello: "/api/hello",
   parse: "/api/parse",
+  jobs: "/api/jobs",
+  jobById: "/api/jobs/:id",
+  jobStream: "/api/jobs/:id/stream",
+  questions: "/api/questions/:id/answer",
+  memory: "/api/memory",
+  profilesStatus: "/api/profiles/status",
 } as const;
 
 export const HelloResponseSchema = z.object({
@@ -166,6 +174,7 @@ export type QuestionView = z.infer<typeof QuestionViewSchema>;
 export const JobViewSchema = z.object({
   id: z.string().min(MIN_TEXT_LENGTH),
   status: JobStatusSchema,
+  erp_host: z.string().min(MIN_TEXT_LENGTH),
   result_ids: AgentResultIdsSchema,
   tasks: z.array(TaskViewSchema),
   questions: z.array(QuestionViewSchema),
@@ -180,6 +189,26 @@ export const MemoryEntrySchema = z.object({
 });
 
 export type MemoryEntry = z.infer<typeof MemoryEntrySchema>;
+
+export const MemoryQuerySchema = z.object({
+  erp_host: z.string().min(MIN_TEXT_LENGTH),
+});
+
+export const AnswerRequestSchema = z.object({
+  answer: z.string().trim().min(MIN_TEXT_LENGTH),
+});
+
+export type AnswerRequest = z.infer<typeof AnswerRequestSchema>;
+
+export const VAULT_CONNECTED = "connected" as const;
+export const VAULT_NOT_CONFIGURED = "not_configured" as const;
+
+export const ProfileStatusSchema = z.object({
+  vault: z.enum([VAULT_CONNECTED, VAULT_NOT_CONFIGURED]),
+  erp_host: z.string().min(MIN_TEXT_LENGTH).nullable(),
+});
+
+export type ProfileStatus = z.infer<typeof ProfileStatusSchema>;
 
 export const DEMO_ERP_HOST = "https://erp.demo.local" as const;
 export const DEMO_CUSTOMER = "DEMO-CUST-001" as const;

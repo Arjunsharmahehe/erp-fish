@@ -11,6 +11,7 @@ import {
   DEMO_WAREHOUSE,
   MIN_TEXT_LENGTH,
   SPACE,
+  CONTENT_TYPE_HEADER,
 } from "shared";
 
 const DEFAULT_ADMIN_USER = "Administrator" as const;
@@ -27,7 +28,6 @@ const RESOURCE_PATH = "/api/resource" as const;
 const FILTER_EQUALS = "=" as const;
 const NAME_FIELD = "name" as const;
 const JSON_MIME = "application/json" as const;
-const CONTENT_TYPE_HEADER = "Content-Type" as const;
 const COOKIE_HEADER = "Cookie" as const;
 const SET_COOKIE_SID_MARKER = "sid=" as const;
 const LOGGER_LEVEL = "info" as const;
