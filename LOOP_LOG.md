@@ -1,5 +1,24 @@
 # LOOP_LOG — erp-fish no-keys build loop
 
+## 03: Invoice parse slice
+- Seam: A (Parse) — parseInvoice* via public interface, stubbed LLM, real unpdf.
+- Red-green: 5 tests first (module missing), green; then 3 more tests for
+  review findings (empty-text guard red, then green). 8 pass.
+- What broke: TanStack AI skill examples target v0.42 `{role, content}`
+  messages; installed v1.0.0 requires UIMessage `{id, role, parts:[{type,
+  content}]}` — resolved against installed source per skill rule, not memory.
+- Reviews: Nemotron sweep (merged 4× `1 as const` into shared
+  MIN_TEXT_LENGTH); Muse review 1 blocker fixed (malformed JSON body now
+  typed 400, not 500) + 4 suggestions accepted (blank-text guard before LLM
+  call, input-capture assertion, extract/validation reason tests,
+  logger.warn on needsFix); 1 declined (safeParse in page — parse() throw
+  is an Error already caught and displayed).
+- Verified: route paste-valid ok, garbage validation_failed, empty
+  empty_request, malformed 400, PDF-without-keys 503 naming missing config;
+  web /parse renders 200, react-doctor clean on new files; typecheck x3 green.
+- Reused later: DEMO_INVOICE fixture + demo-invoice.pdf + generator script
+  feed tickets 04-06 and 02-infra.
+
 ## 01: CLI monorepo scaffold
 - Seam: none (infra, manual verification only — no red-green per specs/04).
 - What broke: (1) `shared`/`api` workspace deps resolved to same-named
