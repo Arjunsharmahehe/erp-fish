@@ -1,5 +1,16 @@
 # LOOP_LOG — erp-fish no-keys build loop
 
+## Track 1 contract gaps
+- Track 1's frozen table says `POST /api/onboarding` returns `{user}`;
+  Track 2's table says it returns a bare `SessionUser`. The frontend currently
+  accepts either shape. Reconcile to one shape before the integrated run.
+- Auth/chat/thread response schemas are owned by Track 2 in `packages/shared`.
+  Track 1 keeps a temporary Zod bridge in `apps/web/src/lib/plan-api.ts` so
+  this branch typechecks in isolation. Replace it with shared imports in Track 3.
+- Thread detail currently returns messages without invoice context. The
+  attached invoice is sent with the first chat request; a thread reopened after
+  reload needs a reattachment unless Track 2 persists and returns that context.
+
 > **Where things stand (2026-10-24):** all no-keys work is committed (8
 > commits, `b0b11e0` → `9c3d706`). Open the **KEYED PHASE** list at the
 > bottom for what remains. Per-ticket detail follows, newest first.
