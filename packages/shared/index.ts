@@ -99,8 +99,10 @@ export const JobStatusSchema = z.enum([
 export type JobStatus = z.infer<typeof JobStatusSchema>;
 
 export const TASK_KIND_PO = "PO" as const;
+export const TASK_KIND_SO = "SO" as const;
+export const TASK_KIND_STOCK = "STOCK" as const;
 
-export const TaskKindSchema = z.enum([TASK_KIND_PO]);
+export const TaskKindSchema = z.enum([TASK_KIND_PO, TASK_KIND_SO, TASK_KIND_STOCK]);
 
 export type TaskKind = z.infer<typeof TaskKindSchema>;
 
@@ -135,6 +137,8 @@ export type JobInput = z.infer<typeof JobInputSchema>;
 
 export const AgentResultIdsSchema = z.object({
   purchase_order_id: z.string().min(MIN_TEXT_LENGTH).optional(),
+  sales_order_id: z.string().min(MIN_TEXT_LENGTH).optional(),
+  stock_entry_id: z.string().min(MIN_TEXT_LENGTH).optional(),
 });
 
 export type AgentResultIds = z.infer<typeof AgentResultIdsSchema>;
@@ -171,5 +175,7 @@ export const DEMO_ERP_HOST = "https://erp.demo.local" as const;
 export const DEMO_PROFILE_ID = "profile-demo-001" as const;
 export const DEMO_INSTRUCTION = "Create PO only" as const;
 export const DEMO_PO_ID = "PO-DEMO-0001" as const;
+export const DEMO_SO_ID = "SO-DEMO-0001" as const;
+export const DEMO_STOCK_ID = "ST-DEMO-0001" as const;
 export const DEMO_QUESTION_RAW = "Which warehouse should receive this stock?" as const;
 export const DEMO_QUESTION_NORM = "which warehouse should receive this stock?" as const;

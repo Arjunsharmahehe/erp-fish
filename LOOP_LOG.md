@@ -1,5 +1,20 @@
 # LOOP_LOG — erp-fish no-keys build loop
 
+## 05: Sale Order plus Stock chain
+- Seam: B — same createJob extended to PO→SO→STOCK via runChainStep+haltJob.
+- Red-green: rewrote job tests for 3-step world (missing methods/events first),
+  green; 14 pass total.
+- Reviews: Nemotron sweep (unified 3 goal builders into buildGoal skeleton);
+  Muse APPROVE 0 blockers, accepted 2 lows (CompletedOutputRowSchema rename,
+  taskId in every event/log context) + noted getJob JSON.parse info (writers
+  always schema-validate; left as-is).
+- Decisions: prior IDs travel as explicit agent args (boundary-observable) AND
+  in goal text; SO/Stock dedupe keyed (kind, invoice_no, supplier, erp_host) —
+  supplier stands in for SO customer until 06 memory supplies mappings;
+  routes+SSE stay deferred to 07-minus (no live adapter yet).
+- Verified: full chain event order, retry reuses all 3 with 1 PO call,
+  retry-after-SO-failure completes, prior IDs at stub boundary.
+
 ## 04: Purchase Order autopilot slice
 - Seam: B (Job orchestrator) — createJob/getJob with stubbed AgentPort, real bun:sqlite :memory:.
 - Red-green: 4 tests first (missing modules), green; review fixes kept green. 12 pass total.

@@ -6,7 +6,6 @@ import {
   JobInputSchema,
   JobStatusSchema,
   QuestionStatusSchema,
-  TASK_KIND_PO,
   TASK_STATUS_DONE,
   TaskKindSchema,
   TaskStatusSchema,
@@ -89,7 +88,7 @@ const QUERY_INSERT_JOB =
 const QUERY_UPDATE_JOB_STATUS = "UPDATE jobs SET status = ? WHERE id = ?" as const;
 const QUERY_UPDATE_JOB_RESULT_IDS = "UPDATE jobs SET result_ids = ? WHERE id = ?" as const;
 const QUERY_FIND_JOB = "SELECT * FROM jobs WHERE id = ?" as const;
-const QUERY_FIND_COMPLETED_PO =
+const QUERY_FIND_COMPLETED_OUTPUT =
   "SELECT tasks.output_id AS output_id, jobs.invoice_json AS invoice_json FROM tasks JOIN jobs ON jobs.id = tasks.job_id WHERE tasks.kind = ? AND tasks.status = ? AND jobs.erp_host = ?" as const;
 const QUERY_INSERT_TASK =
   "INSERT INTO tasks(id, job_id, kind, status, output_id) VALUES(?, ?, ?, ?, ?)" as const;
@@ -99,7 +98,7 @@ const QUERY_INSERT_QUESTION =
   "INSERT INTO questions(id, job_id, q_norm, q_raw, status) VALUES(?, ?, ?, ?, ?)" as const;
 const QUERY_FIND_QUESTIONS = "SELECT * FROM questions WHERE job_id = ?" as const;
 
-const CompletedPoRowSchema = z.object({
+const CompletedOutputRowSchema = z.object({
   output_id: z.string().nullable(),
   invoice_json: z.string(),
 });
@@ -164,15 +163,16 @@ export function findJobRow(db: Database, jobId: string): JobRow | undefined {
   return JobRowSchema.parse(row);
 }
 
-export function findCompletedPo(
+export function findCompletedOutput(
   db: Database,
+  kind: TaskKind,
   invoiceNo: string,
   supplier: string,
   erpHost: string,
 ): string | undefined {
-  const rows: unknown[] = db.query(QUERY_FIND_COMPLETED_PO).all(TASK_KIND_PO, TASK_STATUS_DONE, erpHost);
+  const rows: unknown[] = db.query(QUERY_FIND_COMPLETED_OUTPUT).all(kind, TASK_STATUS_DONE, erpHost);
   for (const row of rows) {
-    const candidate = CompletedPoRowSchema.safeParse(row);
+    const candidate = CompletedOutputRowSchema.safeParse(row);
     if (!candidate.success) {
       continue;
     }
