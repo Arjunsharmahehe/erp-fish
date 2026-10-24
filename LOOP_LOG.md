@@ -178,3 +178,28 @@
   Remove once the UI scaffold phase (user-approved next step) is done.
 - Review: Muse review found no behavior drift; review fixes applied
   (re-await rejects, full row-type re-exports, stale facade comment).
+
+## App UI + chat MVP plan (2026-10-24, uncommitted plan)
+- User direction: `/` stays a static landing placeholder (designed later);
+  hand-rolled JWT now (better-auth later); onboarding captures ERP host +
+  credentials (passwords never persisted, Vault-forwarded when keyed);
+  main app under `/home` with sidebar (Chat, Memory, Settings, jobs);
+  memory page gets edit/delete; settings edits host/endpoint; main chat
+  interface with planning mode (invoice-aware Q&A + TinyFish search/fetch,
+  gated on keys) and agent mode (creates job via existing orchestrator).
+  Agentic browser surface is the next phase after this MVP.
+- Wrote specs/05-app-ui-chat-mvp.md (route map, auth design, shell, chat,
+  memory/settings API, shared schemas, DB migrations, env, build order)
+  + tickets 08-auth-onboarding, 09-app-shell-sidebar, 10-chat-planning-mode
+  (proposes seam D mirroring A, confirm before testing), 11-memory-settings.
+  Tickets 01-07 untouched (historical demo slices).
+- Key decisions: zero new deps (Bun.password + hono/jwt); cookie session
+  `erp_fish_session` + CORS credentials; middleware verifies via
+  GET /api/auth/me (no secret sharing); server fills erp_host/profile_id
+  from session on job create; jobs.user_id scoping with 404 (no leak);
+  chat composition per shadcn rules/chat.md (MessageScroller/Message/
+  Bubble/Attachment/Marker), Questionnaire for onboarding, ToggleGroup for
+  modes; no chat streaming in MVP (JSON req/res).
+- Open questions for user: (1) chat threads client-side vs server
+  persistence for MVP; (2) delete old top-level routes immediately vs keep
+  during transition; (3) landing placeholder content level.
