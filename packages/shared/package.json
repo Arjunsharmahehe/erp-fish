@@ -15,5 +15,6 @@
   },
   "dependencies": {
     "zod": "^4.6.7"
-  }
+  },
+  "version": "0.2.0"
 }

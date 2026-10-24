@@ -92,3 +92,10 @@ Shared Zod schemas live in `packages/shared` only — never duplicated per app.
   `typescript-eslint` refuses the TS 7 native API (tracks TS >=7.1 support).
   The configs in `eslint.base.mjs` are the target state; re-enabling is just
   upgrading `typescript-eslint`, no config rewrite needed.
+
+## 16. Hono routes
+Register API routes by chaining on one `Hono` instance
+(`new Hono().use(...).get(...)`). Split-statement registration drops the
+route from `AppType` (BlankSchema), and `hc` clients silently degrade to
+`unknown`. Never `const app = new Hono(); app.get(...)` discarding the
+return.

@@ -1,10 +1,9 @@
 {
   "name": "erp-fish",
-  "module": "index.ts",
   "type": "module",
   "private": true,
   "scripts": {
-    "lint": "eslint eslint.base.mjs eslint.config.mjs index.ts && bun run --filter 'api' lint && bun run --filter 'web' lint && bun run --filter 'shared' lint",
+    "lint": "eslint eslint.base.mjs eslint.config.mjs && bun run --filter 'api' lint && bun run --filter 'web' lint && bun run --filter 'shared' lint",
     "check": "bun run typecheck && bun run lint",
     "typecheck": "bun run --filter '*' typecheck"
   },

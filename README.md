@@ -1,21 +1,27 @@
 # erp-fish
 
-To install dependencies:
+Bun monorepo: `apps/web` (Next.js) + `apps/api` (Hono) + `packages/shared` (Zod).
+
+## Env
+
+Copy each `.env.example` to `.env.local` and fill in:
+
+- `apps/api/.env.example` — `PORT` (default 3001), `CORS_ORIGIN` (default http://localhost:3000)
+- `apps/web/.env.example` — `NEXT_PUBLIC_API_URL` (e.g. http://localhost:3001)
+
+API validates env at boot and crashes naming the missing var. Web validates via `@t3-oss/env-nextjs`.
+
+## Run
 
 ```bash
 bun install
+bun run --filter 'api' dev     # http://localhost:3001/api/hello
+bun run --filter 'web' dev     # http://localhost:3000 (shows API hello)
 ```
 
-To run:
+## Check
 
 ```bash
-bun run index.ts
+bun run typecheck   # tsc --noEmit per workspace (active gate)
+bun run lint        # blocked upstream: typescript-eslint refuses TS 7 native API; see AGENTS.md §15
 ```
-
-To type check:
-
-```bash
-bun check
-```
-
-This project was created using `bun init` in bun v1.4.3. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
