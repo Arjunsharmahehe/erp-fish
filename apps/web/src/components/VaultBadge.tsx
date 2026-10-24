@@ -40,7 +40,7 @@ export function VaultBadge() {
   }, []);
 
   return (
-    <Badge>
+    <Badge variant="outline">
       {VAULT_LABEL}
       {LABEL_SEPARATOR}
       {state}

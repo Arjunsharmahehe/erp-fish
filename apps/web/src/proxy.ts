@@ -21,12 +21,7 @@ async function sessionUser(request: NextRequest) {
 export async function proxy(request: NextRequest) {
   const user = await sessionUser(request);
   if (!user) {
-    return request.nextUrl.pathname === PLAN_ROUTES.landing
-      ? NextResponse.next()
-      : NextResponse.redirect(new URL(PLAN_ROUTES.login, request.url));
-  }
-  if (request.nextUrl.pathname === PLAN_ROUTES.landing) {
-    return NextResponse.redirect(new URL(user.erp_host ? PLAN_ROUTES.home : PLAN_ROUTES.onboarding, request.url));
+    return NextResponse.redirect(new URL(PLAN_ROUTES.login, request.url));
   }
   if (!user.erp_host && request.nextUrl.pathname !== PLAN_ROUTES.onboarding) {
     return NextResponse.redirect(new URL(PLAN_ROUTES.onboarding, request.url));
@@ -38,5 +33,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/home/:path*", "/onboarding"],
+  matcher: ["/home/:path*", "/onboarding"],
 };
