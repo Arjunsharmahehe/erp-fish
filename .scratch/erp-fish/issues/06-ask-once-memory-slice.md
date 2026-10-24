@@ -4,7 +4,7 @@
 
 **Blocked by:** 04-purchase-order-autopilot-slice.
 
-**Status:** ready-for-agent
+**Status:** done (no-keys loop 2026-10-24, commit `8bca87c`)
 
 **Seams:** B plus C (Job orchestrator plus Memory) — proposed, confirm before testing. Answer via the public Question interface, observe resume plus reuse. Never query the memory table directly in tests.
 

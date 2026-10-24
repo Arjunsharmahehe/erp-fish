@@ -4,7 +4,7 @@
 
 **Blocked by:** 04-purchase-order-autopilot-slice.
 
-**Status:** ready-for-agent
+**Status:** done (no-keys loop 2026-10-24, commit `faef78a`)
 
 **Seam:** B (Job orchestrator) — proposed, confirm before testing. Same public Job interface extended to three steps, stubbed adapter. Never assert on call internals, only on IDs and order.
 

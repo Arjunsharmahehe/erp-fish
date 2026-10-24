@@ -4,7 +4,7 @@
 
 **Blocked by:** 01-cli-monorepo-scaffold.
 
-**Status:** ready-for-agent
+**Status:** done (no-keys loop 2026-10-24, commit `1fd39e2`)
 
 **Seam:** A (Parse) — proposed, confirm before testing. Input invoice bytes via the public parse interface, observe validated JSON or fix request. Never assert on internal text-extraction or prompt strings.
 

@@ -4,7 +4,16 @@
 
 **Blocked by:** None (can start immediately, parallel with 01).
 
-**Status:** ready-for-agent
+**Status:** partial — infra-only done (no-keys loop 2026-10-24, commit `85aa714`); live proof blocked on keys + Docker daemon
+
+## Progress (no-keys loop 2026-10-24)
+- Done without keys: `infra/erpnext/` (compose pin `frappe/erpnext:v16.52.1`,
+  bring-up README, seed env) + `infra/tunnel/` (README, cloudflared.yml) +
+  `apps/api/scripts/seed-erpnext.ts` (idempotent check-then-create masters)
+  + generated `apps/api/tests/fixtures/demo-invoice.pdf` (done under 03).
+- NOT done (keyed phase): boot ERPNext + first-run seed (no Docker daemon on
+  this box), stable tunnel URL, Profile + Vault proof, manual Agent PO run.
+  See LOOP_LOG.md KEYED PHASE items 1–3.
 
 **Seam:** None — manual verification only (real browser plus tunnel cannot be meaningfully unit-tested in 2hr).
 

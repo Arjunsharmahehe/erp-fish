@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done (no-keys loop 2026-10-24, commit `f5f3650`)
 
 **Seam:** None — manual verification only (protects 2hr budget, no automated seam).
 

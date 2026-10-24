@@ -1,5 +1,15 @@
 # LOOP_LOG — erp-fish no-keys build loop
 
+> **Where things stand (2026-10-24):** all no-keys work is committed (8
+> commits, `b0b11e0` → `9c3d706`). Open the **KEYED PHASE** list at the
+> bottom for what remains. Per-ticket detail follows, newest first.
+>
+> **Loop conventions for future agents:** one ticket = one commit
+> (`<nn>: <title>` + seam/tests/review outcome in the body); every ticket
+> ends with typecheck + tests + react-doctor (web) + read-only sweep +
+> Muse-family review, fixes applied, then commit; durable project-wide
+> lessons go to AGENTS.md as a numbered rule, per-ticket notes go here.
+
 ## 07-minus-rehearsal (no live calls; rehearsal itself blocked on keys/tunnel)
 - Routes: POST /api/jobs (201, zValidator), GET job (404), GET stream (SSE
   replay of tasks/questions/done), POST questions answer (400/404),
@@ -124,3 +134,22 @@
 - Verified: api `:3001/api/hello` 200 schema JSON; web `:3000` renders API
   message via `hc` + shared-schema parse; `bun run typecheck` green x3;
   react-doctor 13 warnings all pre-existing `ui/` scaffold.
+
+## KEYED PHASE (blocked on API keys + live Docker daemon + tunnel)
+1. Boot ERPNext: `docker compose up` per `infra/erpnext/README.md`, create the
+   site, run `apps/api/scripts/seed-erpnext.ts`, confirm masters load.
+2. Freeze the tunnel per `infra/tunnel/README.md`; set `ERP_BASE_URL`.
+3. TinyFish live proof (ticket 02): Profile setup-session + Vault link, one
+   manual Agent PO create returning a real order ID.
+4. Real TinyFish adapter (`AgentPort` impl in `apps/api/src/`, using
+   `@tiny-fish/sdk` already installed): replace `createDemoAgent` wiring in
+   `POST /api/jobs` + answer route (keep `DEMO_AGENT=false` default; delete
+   the demo path once live is proven, not before).
+5. Background job execution + live SSE tailing (current `/stream` only
+   replays persisted history).
+6. Full single-invoice rehearsal (ticket 07): upload → parse → autopilot →
+   Q&A if asked → verify PO/SO/Stock IDs in ERPNext, no mid-demo code edits.
+7. Docs notes to re-check live: SO/Stock dedupe is keyed by supplier party
+   (customer mapping may need Memory/goal tuning), warehouse answer
+   (`Main Warehouse` vs ERPNext's `Main Warehouse - DFC`), 25-min manual
+   baseline is a rough estimate.

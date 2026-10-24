@@ -4,7 +4,7 @@
 
 **Blocked by:** 01-cli-monorepo-scaffold, 02-tunnel-erpnext-seed-vault-proof, 03-invoice-parse-slice.
 
-**Status:** ready-for-agent
+**Status:** done (no-keys loop 2026-10-24, commit `474942e`)
 
 **Seam:** B (Job orchestrator) — proposed, confirm before testing. Create Job via the public interface with a stubbed TinyFish adapter, observe order ID plus progress events. Never mock internals or assert on goal wording.
 
