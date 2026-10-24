@@ -79,6 +79,7 @@ const QUERY_FIND_COMPLETED_OUTPUT =
 const QUERY_INSERT_TASK =
   "INSERT INTO tasks(id, job_id, kind, status, output_id) VALUES(?, ?, ?, ?, ?)" as const;
 const QUERY_UPDATE_TASK = "UPDATE tasks SET status = ?, output_id = ? WHERE id = ?" as const;
+const QUERY_UPDATE_TASK_RUN_ID = "UPDATE tasks SET agent_run_id = ? WHERE id = ?" as const;
 const QUERY_FIND_TASKS = "SELECT * FROM tasks WHERE job_id = ?" as const;
 const QUERY_INSERT_QUESTION =
   "INSERT INTO questions(id, job_id, q_norm, q_raw, status) VALUES(?, ?, ?, ?, ?)" as const;
@@ -196,6 +197,10 @@ export function updateTask(
   update: { taskId: string; status: TaskStatus; outputId: string | null },
 ): void {
   db.query(QUERY_UPDATE_TASK).run(update.status, update.outputId, update.taskId);
+}
+
+export function updateTaskRunId(db: Database, update: { taskId: string; runId: string }): void {
+  db.query(QUERY_UPDATE_TASK_RUN_ID).run(update.runId, update.taskId);
 }
 
 export function findTaskRows(db: Database, jobId: string): TaskRow[] {

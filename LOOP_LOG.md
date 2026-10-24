@@ -286,3 +286,39 @@
 - Review (Muse-family subagent): no blockers; nits applied. Declined:
   threading toolsAvailable structurally (ambient env is airtight), unit
   coverage of tool wiring (no confirmed seam; live-verified instead).
+
+## Backend agent-mode slices 1-2 (2026-10-24, backend/agent-mode, uncommitted)
+- Adapter: `apps/api/src/tinyfish-result.ts` (pure PO mapper COMPLETED/
+  FAILED/CANCELLED -> ok/needs_input/throws, 6 tests) + `create-tinyfish-
+  agent.ts` (queue+poll, effective profile, SO/Stock throw not-enabled).
+  Mapper split into env-free module so `bun test` stays green without
+  JWT_SECRET (seam tests never import env-gated modules).
+- Wiring (`index.ts`): auth on jobs + answer routes, session host/profile
+  win with client fallback (contract unchanged), resolveJobAgent
+  (key+profile -> real else demo/503), persistPoRunId via new
+  updateTaskRunId (no-op until a real run exists).
+- Manual: 401 without cookie; demo job done; server-fill proven (client
+  host ignored when onboarded); doubt->waiting; answer resumes.
+- Live attempts (testing key): output_schema must drop
+  additionalProperties (allowlist); max_steps is beta-gated (duration cap
+  only); bad profile fails fast at queue with typed error, no run made.
+- Follow-ups: slice 3 needs real profile + ERP (Docker daemon blocked);
+  restrict real-agent trigger to stored-profile-only later.
+
+## Backend agent-mode review fixes (2026-10-24, backend/agent-mode, uncommitted)
+- Muse-family review verdict was do-not-land-as-is (4 blockers); all fixed:
+  B1 spend gate (real agent only on STORED session host+profile via
+  allowReal; verified: key present + client profile -> demo, no spend),
+  B2 contract note (401 on jobs/answers is per spec 05; reads stay open,
+  ownership rides with deferred user_id scoping),
+  B3 poll resilience (transport errors retry to deadline; auth/bad-request
+  fail fast; error category propagated into the reason),
+  B4 blank stored host/profile map to null (no 500 on row contract).
+- Nits fixed: drainRunIds callability guard, persist never fails the
+  request (warn+continue), distinct unexpected-status error, tests use
+  RunStatus + precedence/empty-detail/non-terminal cases, max-poll cap
+  alongside the deadline, queue errors normalized to agent_queue_failed.
+  Extracted job-agent.ts (route cluster) and split queue/poll/finish
+  helpers to satisfy max-params/complexity/file-length rules.
+- Re-verified: check green, 35 tests green, curl loop green (401, demo
+  done, server-fill, doubt->waiting->answer->re-pause per demo semantics).

@@ -18,14 +18,15 @@ import {
   ParseRequestSchema,
   ProfileStatusSchema,
   QUESTION_STATUS_QUEUED,
+  type JobInput,
 } from "shared";
-import { currentVault } from "./auth";
+import { currentVault, readSessionUser } from "./auth";
 import { createChatRouter } from "./create-chat-router";
 import { createAuthRouter } from "./create-auth-router";
 import { findJobRow, findQuestionRow, openDb } from "./db";
-import { MISSING_DEMO_CONFIG_MESSAGE, createDemoAgent } from "./demoAgent";
-import { DEMO_AGENT_ON, env } from "./env";
+import { env } from "./env";
 import { createInvoiceLlm } from "./create-invoice-llm";
+import { persistPoRunId, resolveJobAgent, storedOrNull } from "./job-agent";
 import { logger } from "./logger";
 import { answerQuestion, createJob, getJob, listMemory } from "./orchestrator";
 import { parseInvoiceJson, parseInvoicePdf, parseInvoiceText } from "./parse";
@@ -58,15 +59,6 @@ function requireLlm() {
       message: MISSING_LLM_CONFIG_MESSAGE,
     });
   }
-}
-
-function requireDemoAgent(instruction: string) {
-  if (env.DEMO_AGENT !== DEMO_AGENT_ON) {
-    throw new HTTPException(SERVICE_UNAVAILABLE_STATUS, {
-      message: MISSING_DEMO_CONFIG_MESSAGE,
-    });
-  }
-  return createDemoAgent(instruction);
 }
 
 const jobsDb: Database = openDb(env.DB_PATH);
@@ -105,11 +97,26 @@ const app = new Hono()
   })
   .post(API_PATHS.jobs, zValidator("json", JobInputSchema), async (c) => {
     logger.info({ route: API_PATHS.jobs }, JOBS_LOG_MESSAGE);
-    const input = c.req.valid("json");
-    const view = await createJob(input, {
-      db: jobsDb,
-      agent: requireDemoAgent(input.instruction),
+    const user = await readSessionUser(c, jobsDb);
+    const clientInput = c.req.valid("json");
+    const storedHost: string | null = storedOrNull(user.erp_host);
+    const storedProfile: string | null = storedOrNull(user.profile_id);
+    const erpHost: string = storedHost ?? clientInput.erp_host;
+    const profileId: string = storedProfile ?? clientInput.profile_id;
+    const input: JobInput = {
+      invoice_json: clientInput.invoice_json,
+      instruction: clientInput.instruction,
+      erp_host: erpHost,
+      profile_id: profileId,
+    };
+    const agent = resolveJobAgent({
+      erpHost,
+      profileId,
+      instruction: input.instruction,
+      allowReal: storedHost !== null && storedProfile !== null,
     });
+    const view = await createJob(input, { db: jobsDb, agent });
+    persistPoRunId({ db: jobsDb, jobId: view.id, agent });
     return c.json(view, CREATED_STATUS);
   })
   .get(API_PATHS.jobById, (c) => {
@@ -145,6 +152,7 @@ const app = new Hono()
   })
   .post(API_PATHS.questions, zValidator("json", AnswerRequestSchema), async (c) => {
     logger.info({ route: API_PATHS.questions }, QUESTIONS_LOG_MESSAGE);
+    const user = await readSessionUser(c, jobsDb);
     const questionId: string = c.req.param("id");
     const question = findQuestionRow(jobsDb, questionId);
     if (question === undefined) {
@@ -159,10 +167,19 @@ const app = new Hono()
     if (job === undefined) {
       throw new HTTPException(NOT_FOUND_STATUS, { message: JOB_NOT_FOUND_MESSAGE });
     }
+    const agent = resolveJobAgent({
+      erpHost: job.erp_host,
+      profileId: job.profile_id,
+      instruction: job.instruction,
+      // Job keeps its original ERP affinity; the session only decides
+      // whether a real run is allowed at all (stored profile required).
+      allowReal: storedOrNull(user.erp_host) !== null && storedOrNull(user.profile_id) !== null,
+    });
     const view = await answerQuestion(
       { jobId: question.job_id, questionId, answer: c.req.valid("json").answer },
-      { db: jobsDb, agent: requireDemoAgent(job.instruction) },
+      { db: jobsDb, agent },
     );
+    persistPoRunId({ db: jobsDb, jobId: view.id, agent });
     return c.json(view);
   })
   .get(API_PATHS.memory, zValidator("query", MemoryQuerySchema), (c) => {
