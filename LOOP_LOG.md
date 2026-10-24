@@ -218,3 +218,29 @@
   edits shared/; gaps logged in LOOP_LOG for track 3.
 - Ports: backend lane defaults (:3000/:3001); frontend lane worktree
   ../erp-fish-frontend on frontend/plan-mode (api :3101, web :3002).
+
+## Track 2 backend plan-mode done (2026-10-24, on backend/plan-mode, unpushed)
+- Built all 8 routes per frozen contract: auth ×4, onboarding, chat ×3.
+  `bun run check` green (typecheck ×3, eslint ×4), `bun test` 26 pass
+  (21 existing + 5 seam-D). Manual curl loop green: signup 201 →
+  me → duplicate 409 → bad-login 401 → onboard host-only → keyless
+  degraded chat 200 + thread_id → continue thread → list/detail →
+  2nd-user foreign-thread 404 → unauth chat 401 → logout → me 401 →
+  login restores → tampered cookie 401. Passwords stored argon2-hashed,
+  fail-fast boot crash names JWT_SECRET, CORS credentials on.
+- Seam D confirmed by lane prompt (red-green with stubbed chat LLM first,
+  mirroring seam A); tests assert frozen literals only.
+- Structure: shared split into base/auth/chat barrel (max-file-length);
+  api split db into users/threads, index routes into create-auth-router/
+  create-chat-router via `.route()` (AppType preserved, hc probe OK).
+- Review fixes applied (Muse-family general subagent): title from first
+  USER-role message; cumulative-send contract (server diffs by stored
+  user count, client assistant msgs never stored) — track-2 doc updated,
+  Track 1 must send full history; seam-D test asserts frozen "fetch_url"/
+  "web_search" literals; ZodError from live LLM → typed 502; narrowed
+  tryCreateChatLlm catch to missing-config only; onboarding creds
+  accept-but-ignore commented (keyed Vault phase forwards, never SQLite).
+- Deferred (explicitly out of scope, not bugs): email normalization,
+  login dummy-verify (timing), thread-ownership dedupe on 3rd use.
+  Vault shows connected here because the shell env has TINYFISH_API_KEY;
+  keyless CI/dev without it degrades per contract.

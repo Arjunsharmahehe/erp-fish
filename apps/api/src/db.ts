@@ -25,6 +25,8 @@ import {
   type QuestionRow,
   type TaskRow,
 } from "./rows";
+import { SCHEMA_CHAT_MESSAGES, SCHEMA_CHAT_THREADS } from "./threads";
+import { SCHEMA_USERS } from "./users";
 
 export const IN_MEMORY_DB_PATH = ":memory:" as const;
 
@@ -109,6 +111,9 @@ export function openDb(path: string = IN_MEMORY_DB_PATH): Database {
   db.run(SCHEMA_TASKS);
   db.run(SCHEMA_QUESTIONS);
   db.run(SCHEMA_MEMORY);
+  db.run(SCHEMA_USERS);
+  db.run(SCHEMA_CHAT_THREADS);
+  db.run(SCHEMA_CHAT_MESSAGES);
   return db;
 }
 

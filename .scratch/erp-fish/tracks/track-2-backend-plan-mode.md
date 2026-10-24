@@ -65,8 +65,12 @@ Your stack: defaults (`:3000` web / `:3001` api). Add to
    norm until keys land.
 5. **Threads storage** — `chat_threads(id, user_id, title, created_at)`,
    `chat_messages(id, thread_id, role, content, created_at)`. Title from
-   first user message (truncate with a named constant). All thread routes
+   first **user-role** message (truncate with a named constant). All thread routes
    scoped by session user; foreign threads → `404` (no leak).
+   **Send contract (Track 1 reads this): clients send the FULL message
+   list each call (cumulative, not deltas); the server appends only user
+   turns beyond the stored user count, so resends never duplicate.
+   Client `assistant` messages are never stored — only server replies.**
 6. **Planning chat (seam D — red-green, confirm seam before testing)** —
    stub the chat LLM first (canned answer, mirroring seam A style):
    (a) planning answer over an attached invoice echoes invoice values from
