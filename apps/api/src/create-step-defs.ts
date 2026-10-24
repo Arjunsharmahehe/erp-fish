@@ -15,6 +15,7 @@ import {
 } from "./events";
 import { buildPoGoal, buildSoGoal, buildStockGoal, withQa } from "./goals";
 import { mustId } from "./queries";
+import type { SiteProfile } from "./site";
 import type { AgentPort, StepDef } from "./types";
 
 interface StepDefRequest {
@@ -22,6 +23,7 @@ interface StepDefRequest {
   parsed: JobInput;
   learned: string;
   collected: AgentResultIds;
+  site: SiteProfile;
 }
 
 function poStepDef(request: StepDefRequest): StepDef {
@@ -31,7 +33,10 @@ function poStepDef(request: StepDefRequest): StepDef {
     reusedEvent: EVENT_PO_REUSED,
     run: (qa) =>
       request.agent.runPurchaseOrder({
-        goal: withQa(buildPoGoal(request.parsed, request.learned), qa),
+        goal: withQa(
+          buildPoGoal({ input: request.parsed, learned: request.learned, site: request.site }),
+          qa,
+        ),
       }),
   };
 }
@@ -47,6 +52,7 @@ function soStepDef(request: StepDefRequest): StepDef {
           buildSoGoal({
             input: request.parsed,
             learned: request.learned,
+            site: request.site,
             purchaseOrderId: mustId(request.collected.purchase_order_id),
           }),
           qa,
@@ -67,6 +73,7 @@ function stockStepDef(request: StepDefRequest): StepDef {
           buildStockGoal({
             input: request.parsed,
             learned: request.learned,
+            site: request.site,
             purchaseOrderId: mustId(request.collected.purchase_order_id),
             salesOrderId: mustId(request.collected.sales_order_id),
           }),

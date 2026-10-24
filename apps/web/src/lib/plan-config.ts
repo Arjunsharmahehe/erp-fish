@@ -41,7 +41,7 @@ export const PLAN_COPY = {
   onboardingTitle: "Connect your ERP",
   onboardingDescription: "Add your ERP host to start planning. Credentials can wait.",
   erpHost: "ERP host URL",
-  erpHostHint: "Use the full HTTPS address of your ERPNext site.",
+  erpHostHint: "Use the full HTTPS address of your ERP site.",
   erpUsername: "ERP username (optional)",
   erpPassword: "ERP password (optional)",
   credentialsTitle: "ERP credentials",

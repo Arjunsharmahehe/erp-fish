@@ -2,7 +2,7 @@ import { FileTextIcon, MessagesSquareIcon, ListChecksIcon } from "lucide-react";
 
 export const LANDING_COPY = Object.freeze({
   title: "ERP Fish — A clearer way through ERP work",
-  description: "Bring an invoice or a task to ERP Fish. Work through the details, clarify what is missing, and prepare your next step in ERPNext.",
+  description: "Bring a document or a task to ERP Fish. Work through the details, clarify what is missing, and prepare your next step in your ERP.",
   navigation: "Main navigation",
   skip: "Skip to content",
   headline: "ERP work,",
@@ -12,7 +12,7 @@ export const LANDING_COPY = Object.freeze({
   how: "How it works",
   questions: "Questions",
   login: "Log in",
-  heroNote: "Built around ERPNext. Designed around your work.",
+  heroNote: "Your ERP in the browser. Your work in one place.",
   example: "Example planning session",
   exampleTitle: "An invoice. A clear way forward.",
   exampleStatus: "Planning",
@@ -63,14 +63,14 @@ export const LANDING_STEPS = [
 ];
 
 export const LANDING_QUESTIONS = [
-  { number: "01", title: "Which ERP is this built for?", answer: "ERP Fish is being built around ERPNext. The workspace brings invoice context and planning conversations together." },
+  { number: "01", title: "Which ERP is this built for?", answer: "ERP Fish uses your connected ERP URL. The browser agent discovers its navigation and forms, using your documents and conversation as context." },
   { number: "02", title: "Will planning change my ERP data?", answer: "No. Planning mode helps you prepare and ask questions. Agent mode for executing ERP workflows is still in development." },
   { number: "03", title: "What can I explore right now?", answer: "Explore the planning workspace and sample conversations in the local preview. Live planning, invoice parsing, and ERP actions are still being connected." },
   { number: "04", title: "Where does TinyFish fit in?", answer: "TinyFish provides the browser automation for the planned ERP workflows, so the agent can work through the ERP interface." },
 ];
 
 export const LANDING_FACTS = [
-  { title: "ERPNext", description: "Your ERP, in context" },
+  { title: "Your ERP", description: "Your ERP, in context" },
   { title: "Planning first", description: "Prepare before making changes" },
   { title: "One conversation", description: "Keep the details together" },
 ];

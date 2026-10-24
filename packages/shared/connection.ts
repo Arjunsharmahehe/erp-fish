@@ -5,10 +5,14 @@ const HTTPS = "https:";
 const HTTP = "http:";
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
 const URL_ERROR = "Enter an HTTPS ERP URL (HTTP is allowed for localhost). Do not include credentials, a query, or a fragment.";
+const ROOT_PATH = "/";
 export const ErpUrlSchema = z.url().refine((value) => {
   const url = new URL(value);
   return !url.username && !url.password && !url.search && !url.hash && (url.protocol === HTTPS || (url.protocol === HTTP && LOCAL_HOSTS.includes(url.hostname)));
-}, URL_ERROR).transform((value) => new URL(value).origin);
+}, URL_ERROR).transform((value) => {
+  const url = new URL(value);
+  return url.pathname === ROOT_PATH ? url.origin : url.href;
+});
 export const ConnectionUpdateSchema = z.object({ erp_host: ErpUrlSchema }).strict();
 export const TinyProfileSchema = z.object({
   id: z.string().min(MIN), name: z.string(),
@@ -19,6 +23,9 @@ export const ConnectionStateSchema = z.object({
   profile_name: z.string().nullable(), session_saved: z.boolean(),
   checked_at: z.string().nullable(), provider_configured: z.boolean(),
   vault_available: z.boolean(),
+  credentials_saved: z.boolean().default(false),
+  vault_configured: z.boolean().default(false), vault_label: z.string().nullable().default(null),
+  vault_message: z.string().nullable().default(null),
 });
 export const ConnectionRowSchema = z.object({
   user_id: z.string(), erp_host: z.string(), profile_id: z.string(),

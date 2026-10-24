@@ -12,11 +12,15 @@ export const ChatRoleSchema = z.enum([CHAT_ROLE_USER, CHAT_ROLE_ASSISTANT]);
 
 export type ChatRole = z.infer<typeof ChatRoleSchema>;
 
-export const ChatMessageSchema = z.object({
-  role: ChatRoleSchema,
-  content: z.string().min(MIN_TEXT_LENGTH),
+export const ChatAttachmentSchema = z.object({ name: z.string().trim().min(MIN_TEXT_LENGTH) });
+export const ChatMessageDetailsSchema = z.object({
   activity: ChatActivitiesSchema.optional(),
   citations: z.array(z.string()).optional(),
+  attachment: ChatAttachmentSchema.optional(),
+});
+export const ChatMessageSchema = ChatMessageDetailsSchema.extend({
+  role: ChatRoleSchema,
+  content: z.string().min(MIN_TEXT_LENGTH),
   original: OriginalMessageSchema.optional(),
 });
 

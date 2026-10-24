@@ -1,0 +1,17 @@
+export const agentRunSql = Object.freeze({
+  schema: `CREATE TABLE IF NOT EXISTS agent_runs(id TEXT PRIMARY KEY,thread_id TEXT NOT NULL,user_id TEXT NOT NULL,erp_host TEXT NOT NULL,input_json TEXT NOT NULL,status TEXT NOT NULL,provider_run_id TEXT,browser_profile_id TEXT,summary TEXT NOT NULL,records_json TEXT NOT NULL,question TEXT,error TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+  sessions: "CREATE TABLE IF NOT EXISTS agent_sessions(thread_id TEXT PRIMARY KEY,user_id TEXT NOT NULL,erp_host TEXT NOT NULL,profile_id TEXT NOT NULL,credential_revision TEXT NOT NULL)",
+  attempts: "CREATE TABLE IF NOT EXISTS agent_attempts(job_id TEXT NOT NULL,provider_run_id TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL)",
+  recordAttempt: "INSERT INTO agent_attempts(job_id,provider_run_id,created_at) VALUES(?,?,?)",
+  readAttempts: "SELECT a.* FROM agent_attempts a JOIN agent_runs r ON r.id=a.job_id WHERE r.id=? AND r.user_id=? ORDER BY a.rowid ASC",
+  activeConnection: "SELECT * FROM agent_runs WHERE user_id=? AND erp_host=? AND status IN ('preparing','running','waiting','uncertain')",
+  insert: "INSERT INTO agent_runs(id,thread_id,user_id,erp_host,input_json,status,summary,records_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+  find: "SELECT * FROM agent_runs WHERE id=? AND user_id=?",
+  thread: "SELECT * FROM agent_runs WHERE thread_id=? AND user_id=? ORDER BY created_at ASC,rowid ASC",
+  list: "SELECT * FROM agent_runs WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+  active: "SELECT * FROM agent_runs WHERE thread_id=? AND user_id=? AND status IN ('preparing','running','waiting','uncertain')",
+  update: "UPDATE agent_runs SET status=?,provider_run_id=?,browser_profile_id=?,summary=?,records_json=?,question=?,error=?,updated_at=? WHERE id=? AND user_id=?",
+  session: "SELECT * FROM agent_sessions WHERE thread_id=? AND user_id=? AND erp_host=?",
+  saveSession: "INSERT INTO agent_sessions(thread_id,user_id,erp_host,profile_id,credential_revision) VALUES(?,?,?,?,?) ON CONFLICT(thread_id) DO UPDATE SET profile_id=excluded.profile_id,credential_revision=excluded.credential_revision",
+  clearSession: "DELETE FROM agent_sessions WHERE thread_id=?",
+});

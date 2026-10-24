@@ -1,5 +1,9 @@
 # TinyFish Integration (judging-critical)
 
+> Historical demo design. The live chat agent now follows
+> [Generic ERP phase 1](06-generic-agent-phase1.md), which supersedes this page's
+> fixed-doctype chain and login wiring. Remote sessions use scoped TinyFish Vault.
+
 Must name all four on stage. No Frappe REST writes.
 
 ## 1. Browser Context Profiles (login persistence)

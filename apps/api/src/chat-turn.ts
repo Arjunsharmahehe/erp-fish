@@ -115,6 +115,7 @@ export function storeNewUserTurns(
       role: message.role,
       content: message.content,
       original: message.original,
+      attachment: message.attachment,
       createdAt: turn.now,
     });
   }

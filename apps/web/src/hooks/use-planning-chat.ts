@@ -2,69 +2,19 @@
 import { useEnglishInput } from "@/components/language-provider";
 import { useMessageDraft } from "@/hooks/use-message-draft";
 
-import { useEffect, useRef, useState, type ChangeEvent, type SyntheticEvent } from "react";
+import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { loadThread, parseInvoice, type ChatMessage, type Invoice, type ThreadSummary } from "@/lib/plan-api";
+import { loadThread, type ChatMessage, type Invoice, type ThreadSummary } from "@/lib/plan-api";
 import { CHAT_ACTIVITY, type ChatActivity } from "shared";
+
+
 import { sendChatStream } from "@/lib/send-chat-stream";
 import { WORKSPACE_QUERY } from "@/lib/workspace-config";
-import { INVOICE_FILE, PLAN_API, PLAN_COPY, PLAN_LIMITS, PLAN_ROUTES, THREADS_QUERY_KEY } from "@/lib/plan-config";
+import { PLAN_API, PLAN_COPY, PLAN_ROUTES, THREADS_QUERY_KEY } from "@/lib/plan-config";
 
-export function useInvoice(threadId: string | null) {
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [parsing, setParsing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [owner, setOwner] = useState<string | null>(null);
-  const parseRequest = useRef(PLAN_LIMITS.firstStep);
-
-  async function attachFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.item(PLAN_LIMITS.firstStep);
-    if (!file) return;
-    event.target.value = INVOICE_FILE.emptyInput;
-    parseRequest.current += PLAN_LIMITS.nextOccurrence;
-    const request = parseRequest.current;
-    setOwner(threadId);
-    setInvoice(null);
-    setFileName(file.name);
-    setParsing(true);
-    setError(null);
-    try {
-      const parsed = await parseInvoice(file);
-      if (request === parseRequest.current) setInvoice(parsed);
-    } catch (error) {
-      if (request === parseRequest.current) {
-        setInvoice(null);
-        setError(error instanceof Error ? error.message : PLAN_COPY.parseFailed);
-      }
-    } finally {
-      if (request === parseRequest.current) setParsing(false);
-    }
-  }
-
-  function removeAttachment() {
-    parseRequest.current += PLAN_LIMITS.nextOccurrence;
-    setInvoice(null);
-    setFileName(null);
-    setParsing(false);
-    setError(null);
-    setOwner(null);
-  }
-
-  const current = owner === threadId;
-  return {
-    invoice: current ? invoice : null,
-    fileName: current ? fileName : null,
-    parsing: current && parsing,
-    error: current ? error : null,
-    attachFile,
-    removeAttachment,
-    claimThread: (id: string) => { setOwner(id); },
-  };
-}
-
-function useActiveConversation() {
+export { useInvoice } from "./use-invoice";
+export function useActiveConversation() {
   const active = useRef(true);
   useEffect(() => {
     active.current = true;
@@ -142,5 +92,5 @@ export function useChatSend(options: { threadId: string | null; invoice: Invoice
     }
   }
 
-  return { messages, draft, setDraft, replaceDraft, setVoiceDraft, sending, error, thread, send, activity };
+  return { messages, draft, draftLanguage, draftParts, setDraft, replaceDraft, setVoiceDraft, sending, error, thread, send, activity };
 }

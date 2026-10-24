@@ -12,12 +12,15 @@ import { userMemoryScope } from "./learning-router";
 import type { UserRow } from "./users";
 import { assertChatIdle } from "./chat-lock";
 import { requireThreadScope } from "./thread-scope";
+import { activeRuns } from "./agent-run-store";
+import { AGENT } from "shared";
 
 const ROOT_PATH = "/";
 const NO_CONTENT_STATUS = 204;
 const WAITING_STATUS = 409;
 const WAITING_MESSAGE = "Answer the pending questionnaire before sending another message.";
 function checkQuestions(db: Database, { user, threadId }: { user: UserRow; threadId: string }) {
+  if (activeRuns(db, { threadId: threadId, userId: user.id }).length) throw new HTTPException(WAITING_STATUS, { message: AGENT.busy });
   assertChatIdle(threadId);
   requireThreadScope(db, { threadId, scope: userMemoryScope(user) });
   if (listLearningQuestions(db, { scope: userMemoryScope(user), sourceType: "chat", sourceId: threadId }).some((question) => question.status === "pending" || question.resume_status !== "done")) {
@@ -46,6 +49,7 @@ function createThreadRouter(db: Database) {
     .delete(API_PATHS.chatThreadById, async (c) => {
       const user = await readSessionUser(c, db);
       const thread = ownedThread(db, { threadId: c.req.param("id"), userId: user.id });
+      if (activeRuns(db, { threadId: thread.id, userId: user.id }).length) throw new HTTPException(WAITING_STATUS, { message: AGENT.busy });
       deleteChatThread(db, thread.id);
       return c.body(null, NO_CONTENT_STATUS);
     });

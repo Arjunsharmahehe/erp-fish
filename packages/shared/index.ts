@@ -226,3 +226,6 @@ export * from "./learning";
 export * from "./connection";
 export * from "./language";
 export * from "./model-settings";
+export * from "./agent";
+export * from "./erp-credentials";
+export * from "./remote-vault";

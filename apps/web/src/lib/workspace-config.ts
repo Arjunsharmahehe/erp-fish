@@ -13,8 +13,9 @@ export const WORKSPACE_COPY = {
   requestError: "We couldn’t save that change. Please try again.", unavailable: "The service is unavailable. Please try again.",
   invalidResponse: "The service returned an unexpected response.", loading: "Loading…",
   settingsTitle: "Settings", settingsIntro: "Keep your ERP connection ready for work.",
+  accountTitle: "Account", accountDescription: "Your ERP Fish sign-in details.", accountEmail: "Email",
   connection: "ERP connection", connectionDescription: "Your workspace and memories are scoped to this ERP.",
-  erpUrl: "ERP URL", erpHint: "Use your ERPNext site’s HTTPS address. Changing it starts a separate memory scope.",
+  erpUrl: "ERP URL", erpHint: "Use your ERP’s HTTPS address. Changing it clears the saved login and starts a separate memory scope.",
   erpPlaceholder: "https://erp.yourcompany.com", saved: "Changes saved.",
   login: "ERP login", loginDescription: "Use TinyFish’s secure browser profile to change the account used for ERP work.",
   reconnect: "Set up ERP login", reopen: "Change ERP login", check: "Refresh connection",
@@ -32,9 +33,9 @@ export const WORKSPACE_COPY = {
   resumeFailed: "Your answer was saved. The agent couldn’t continue yet.", resume: "Resume agent",
   resumed: "The agent is continuing with your answer.", waiting: "Answer the question above to continue.",
 };
-export const WORKSPACE_QUERY = Object.freeze({ memory: ["saved-memories"], settings: ["erp-connection"], questions: "learning-questions" });
+export const WORKSPACE_QUERY = Object.freeze({ memory: ["saved-memories"], settings: ["erp-connection"], account: ["signed-in-account"], questions: "learning-questions" });
 export const WORKSPACE_LINKS = { tinyfish: "https://agent.tinyfish.ai", vaultGuide: "https://docs.tinyfish.ai/vault-setup", target: "_blank", rel: "noopener noreferrer" };
 export const WORKSPACE_FIELDS = { search: "memory-search", question: "memory-question", answer: "memory-answer", context: "memory-context", host: "erp-host", answerItem: "answer" };
 const QUESTION_POLL_MS = 2000;
 const MAX_ERROR_LENGTH = 500;
-export const WORKSPACE_LIMITS = { first: 0, pollMs: QUESTION_POLL_MS, maxError: MAX_ERROR_LENGTH };
+export const WORKSPACE_LIMITS = { first: 0, accountCacheMs: 0, pollMs: QUESTION_POLL_MS, maxError: MAX_ERROR_LENGTH };

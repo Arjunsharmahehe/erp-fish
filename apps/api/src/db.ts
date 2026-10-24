@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { jobSchema } from "./job-schema";
 import {
   AgentResultIdsSchema,
   InvoiceJSONSchema,
@@ -32,47 +33,12 @@ import { JOB_OWNERS_SQL } from "./job-ownership";
 import { connectionSql as CONNECTION_SQL } from "./connection-sql";
 import { THREAD_SCOPE_SQL } from "./thread-scope";
 import { modelSettingsSql as MODEL_SETTINGS_SQL } from "./model-settings-sql";
+import { erpCredentialSql as CREDENTIAL_SQL } from "./erp-credential-sql";
+import { agentRunSql as AGENT_SQL } from "./agent-run-sql";
 
 export const IN_MEMORY_DB_PATH = ":memory:" as const;
 
 export type { JobRow, QuestionRow, TaskRow } from "./rows";
-
-const SCHEMA_JOBS = `CREATE TABLE IF NOT EXISTS jobs(
-id TEXT PRIMARY KEY,
-erp_host TEXT NOT NULL,
-profile_id TEXT NOT NULL,
-invoice_json TEXT NOT NULL,
-instruction TEXT NOT NULL,
-status TEXT NOT NULL,
-result_ids TEXT,
-created_at TEXT NOT NULL
-)` as const;
-
-const SCHEMA_TASKS = `CREATE TABLE IF NOT EXISTS tasks(
-id TEXT PRIMARY KEY,
-job_id TEXT NOT NULL,
-kind TEXT NOT NULL,
-status TEXT NOT NULL,
-agent_run_id TEXT,
-output_id TEXT
-)` as const;
-
-const SCHEMA_QUESTIONS = `CREATE TABLE IF NOT EXISTS questions(
-id TEXT PRIMARY KEY,
-job_id TEXT NOT NULL,
-q_norm TEXT NOT NULL,
-q_raw TEXT NOT NULL,
-answer TEXT,
-status TEXT NOT NULL
-)` as const;
-
-const SCHEMA_MEMORY = `CREATE TABLE IF NOT EXISTS memory(
-erp_host TEXT NOT NULL,
-q_norm TEXT NOT NULL,
-answer TEXT NOT NULL,
-updated_at TEXT NOT NULL,
-PRIMARY KEY(erp_host, q_norm)
-)` as const;
 
 const QUERY_INSERT_JOB =
   "INSERT INTO jobs(id, erp_host, profile_id, invoice_json, instruction, status, created_at) VALUES(?, ?, ?, ?, ?, ?, ?)" as const;
@@ -84,6 +50,7 @@ const QUERY_FIND_COMPLETED_OUTPUT =
 const QUERY_INSERT_TASK =
   "INSERT INTO tasks(id, job_id, kind, status, output_id) VALUES(?, ?, ?, ?, ?)" as const;
 const QUERY_UPDATE_TASK = "UPDATE tasks SET status = ?, output_id = ? WHERE id = ?" as const;
+const QUERY_UPDATE_TASK_RUN_ID = "UPDATE tasks SET agent_run_id = ? WHERE id = ?" as const;
 const QUERY_FIND_TASKS = "SELECT * FROM tasks WHERE job_id = ?" as const;
 const QUERY_INSERT_QUESTION =
   "INSERT INTO questions(id, job_id, q_norm, q_raw, status) VALUES(?, ?, ?, ?, ?)" as const;
@@ -112,10 +79,7 @@ function safeParseJson(text: string): ParsedInvoice | undefined {
 
 export function openDb(path: string = IN_MEMORY_DB_PATH): Database {
   const db = new Database(path, { create: true });
-  db.run(SCHEMA_JOBS);
-  db.run(SCHEMA_TASKS);
-  db.run(SCHEMA_QUESTIONS);
-  db.run(SCHEMA_MEMORY);
+  for (const schema of jobSchema) db.run(schema);
   db.run(SCHEMA_USERS);
   db.run(SCHEMA_CHAT_THREADS);
   db.run(SCHEMA_CHAT_MESSAGES);
@@ -129,6 +93,10 @@ export function openDb(path: string = IN_MEMORY_DB_PATH): Database {
   db.run(CONNECTION_SQL.schema);
   db.run(THREAD_SCOPE_SQL.schema);
   db.run(MODEL_SETTINGS_SQL.schema);
+  db.run(CREDENTIAL_SQL.schema);
+  db.run(AGENT_SQL.schema);
+  db.run(AGENT_SQL.sessions);
+  db.run(AGENT_SQL.attempts);
   return db;
 }
 
@@ -211,6 +179,10 @@ export function updateTask(
   update: { taskId: string; status: TaskStatus; outputId: string | null },
 ): void {
   db.query(QUERY_UPDATE_TASK).run(update.status, update.outputId, update.taskId);
+}
+
+export function updateTaskRunId(db: Database, update: { taskId: string; runId: string }): void {
+  db.query(QUERY_UPDATE_TASK_RUN_ID).run(update.runId, update.taskId);
 }
 
 export function findTaskRows(db: Database, jobId: string): TaskRow[] {

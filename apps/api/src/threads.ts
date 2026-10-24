@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { OriginalMessageSchema, StoredOriginalSchema, type OriginalMessage } from "shared";
-import { ChatMessageSchema, ChatResponseSchema, StoredChatDetailsSchema, type ChatResponse, type ChatMessage, type ChatRole, type ThreadUpdate } from "shared";
+import { ChatMessageSchema, ChatMessageDetailsSchema, StoredChatDetailsSchema, type ChatResponse, type ChatMessage, type ChatRole, type ThreadUpdate } from "shared";
 import {
   ChatMessageRowSchema,
   ChatThreadRowSchema,
@@ -51,6 +51,8 @@ const UPSERT_THREAD_STATE = "INSERT INTO chat_thread_state(thread_id, pinned, ar
 const DELETE_THREAD_MESSAGES = "DELETE FROM chat_messages WHERE thread_id = ?";
 const DELETE_THREAD_STATE = "DELETE FROM chat_thread_state WHERE thread_id = ?";
 const DELETE_THREAD = "DELETE FROM chat_threads WHERE id = ?";
+const DELETE_AGENT_RUNS = "DELETE FROM agent_runs WHERE thread_id = ?";
+const DELETE_AGENT_SESSION = "DELETE FROM agent_sessions WHERE thread_id = ?";
 
 export function updateChatThread(db: Database, options: { thread: ChatThreadRow; update: ThreadUpdate }): void {
   const { thread, update } = options;
@@ -62,6 +64,12 @@ export function updateChatThread(db: Database, options: { thread: ChatThreadRow;
 
 export function deleteChatThread(db: Database, threadId: string): void {
   db.transaction(() => {
+    const deleteAttempts = "DELETE FROM agent_attempts WHERE job_id IN (SELECT id FROM agent_runs WHERE thread_id=?)";
+    const deleteAgentQuestions = "DELETE FROM learning_questions WHERE source_type='job' AND source_id IN (SELECT id FROM agent_runs WHERE thread_id=?)";
+    db.query(deleteAgentQuestions).run(threadId);
+    db.query(deleteAttempts).run(threadId);
+    db.query(DELETE_AGENT_RUNS).run(threadId);
+    db.query(DELETE_AGENT_SESSION).run(threadId);
     db.query(DELETE_CHAT_DETAILS).run(threadId);
     db.query(DELETE_ORIGINALS).run(threadId);
     db.query(DELETE_THREAD_MESSAGES).run(threadId);
@@ -92,7 +100,7 @@ export function listChatThreads(db: Database, userId: string): ChatThreadRow[] {
 
 export function insertChatMessage(
   db: Database,
-  row: { id: string; threadId: string; role: ChatRole; content: string; createdAt: string; original?: OriginalMessage },
+  row: { id: string; threadId: string; role: ChatRole; content: string; createdAt: string; original?: OriginalMessage; attachment?: ChatMessage["attachment"] },
 ): void {
   db.query(QUERY_INSERT_CHAT_MESSAGE).run(
     row.id,
@@ -102,6 +110,7 @@ export function insertChatMessage(
     row.createdAt,
   );
   if (row.original) db.query(INSERT_ORIGINAL).run(row.id, JSON.stringify(OriginalMessageSchema.parse(row.original)));
+  if (row.attachment) db.query(INSERT_CHAT_DETAILS).run(row.id, JSON.stringify(ChatMessageDetailsSchema.parse({ attachment: row.attachment })));
 }
 
 export function listChatMessages(db: Database, threadId: string): ChatMessage[] {
@@ -110,8 +119,8 @@ export function listChatMessages(db: Database, threadId: string): ChatMessage[] 
     const parsed: ChatMessageRow = ChatMessageRowSchema.parse(row);
     const stored = StoredChatDetailsSchema.parse(row);
     const original = StoredOriginalSchema.parse(row).original;
-    const details = stored.details === null ? undefined : ChatResponseSchema.parse(JSON.parse(stored.details));
-    return ChatMessageSchema.parse({ role: parsed.role, content: parsed.content, activity: details?.activity, citations: details?.citations, original: original ? OriginalMessageSchema.parse(JSON.parse(original)) : undefined });
+    const details = stored.details === null ? undefined : ChatMessageDetailsSchema.parse(JSON.parse(stored.details));
+    return ChatMessageSchema.parse({ role: parsed.role, content: parsed.content, ...details, original: original ? OriginalMessageSchema.parse(JSON.parse(original)) : undefined });
   });
 }
 

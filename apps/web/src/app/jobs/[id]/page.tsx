@@ -1,35 +1,24 @@
 import { Suspense } from "react";
 import { cookies } from "next/headers";
-import * as z from "zod";
+import { notFound, redirect } from "next/navigation";
+import { AGENT, AgentRunViewSchema } from "shared";
 import { env } from "@/env";
-import { API_PATHS, JobViewSchema, type JobView } from "shared";
-import { JobViewPanel } from "./job-view-panel";
-
-const MIN_ID_LENGTH = 1 as const;
-const ID_PARAM = ":id" as const;
-const LOADING_LABEL = "Loading…" as const;
-const COOKIE_HEADER = "Cookie";
-const CACHE_MODE = "no-store";
-
+import { PLAN_HTTP, PLAN_ROUTES } from "@/lib/plan-config";
+const ID_PARAM = ":id";
+const UNAUTHORIZED = 401;
+const MISSING = 404;
+const LOAD_ERROR = "The agent run could not be loaded. Please try again.";
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
-  return (
-    <Suspense fallback={<p>{LOADING_LABEL}</p>}>
-      <JobPageContent params={params} />
-    </Suspense>
-  );
+  return <Suspense><OpenRun params={params} /></Suspense>;
 }
-
-async function JobPageContent({ params }: { params: Promise<{ id: string }> }) {
+async function OpenRun({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const jobId: string = z.string().min(MIN_ID_LENGTH).parse(id);
-  let initial: JobView | null = null;
-  try {
-    const res = await fetch(`${env.NEXT_PUBLIC_API_URL}${API_PATHS.jobById.replace(ID_PARAM, jobId)}`, { headers: { [COOKIE_HEADER]: (await cookies()).toString() }, cache: CACHE_MODE });
-    if (res.ok) {
-      initial = JobViewSchema.parse(await res.json());
-    }
-  } catch {
-    initial = null;
-  }
-  return <JobViewPanel jobId={jobId} initial={initial} />;
+  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${AGENT.paths.job.replace(ID_PARAM, encodeURIComponent(id))}`, {
+    headers: { [PLAN_HTTP.cookie]: (await cookies()).toString() }, cache: PLAN_HTTP.noStore,
+  });
+  if (response.status === UNAUTHORIZED) redirect(PLAN_ROUTES.login);
+  if (response.status === MISSING) notFound();
+  if (!response.ok) throw new Error(LOAD_ERROR);
+  const run = AgentRunViewSchema.parse(await response.json());
+  return redirect(`${PLAN_ROUTES.home}?thread=${encodeURIComponent(run.thread_id)}`);
 }

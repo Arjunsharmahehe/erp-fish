@@ -328,3 +328,152 @@
 - Review (Muse-family subagent): no blockers; nits applied. Declined:
   threading toolsAvailable structurally (ambient env is airtight), unit
   coverage of tool wiring (no confirmed seam; live-verified instead).
+
+## Backend agent-mode slices 1-2 (2026-10-24, backend/agent-mode, uncommitted)
+- Adapter: `apps/api/src/tinyfish-result.ts` (pure PO mapper COMPLETED/
+  FAILED/CANCELLED -> ok/needs_input/throws, 6 tests) + `create-tinyfish-
+  agent.ts` (queue+poll, effective profile, SO/Stock throw not-enabled).
+  Mapper split into env-free module so `bun test` stays green without
+  JWT_SECRET (seam tests never import env-gated modules).
+- Wiring (`index.ts`): auth on jobs + answer routes, session host/profile
+  win with client fallback (contract unchanged), resolveJobAgent
+  (key+profile -> real else demo/503), persistPoRunId via new
+  updateTaskRunId (no-op until a real run exists).
+- Manual: 401 without cookie; demo job done; server-fill proven (client
+  host ignored when onboarded); doubt->waiting; answer resumes.
+- Live attempts (testing key): output_schema must drop
+  additionalProperties (allowlist); max_steps is beta-gated (duration cap
+  only); bad profile fails fast at queue with typed error, no run made.
+- Follow-ups: slice 3 needs real profile + ERP (Docker daemon blocked);
+  restrict real-agent trigger to stored-profile-only later.
+
+## Backend agent-mode review fixes (2026-10-24, backend/agent-mode, uncommitted)
+- Muse-family review verdict was do-not-land-as-is (4 blockers); all fixed:
+  B1 spend gate (real agent only on STORED session host+profile via
+  allowReal; verified: key present + client profile -> demo, no spend),
+  B2 contract note (401 on jobs/answers is per spec 05; reads stay open,
+  ownership rides with deferred user_id scoping),
+  B3 poll resilience (transport errors retry to deadline; auth/bad-request
+  fail fast; error category propagated into the reason),
+  B4 blank stored host/profile map to null (no 500 on row contract).
+- Nits fixed: drainRunIds callability guard, persist never fails the
+  request (warn+continue), distinct unexpected-status error, tests use
+  RunStatus + precedence/empty-detail/non-terminal cases, max-poll cap
+  alongside the deadline, queue errors normalized to agent_queue_failed.
+  Extracted job-agent.ts (route cluster) and split queue/poll/finish
+  helpers to satisfy max-params/complexity/file-length rules.
+- Re-verified: check green, 35 tests green, curl loop green (401, demo
+  done, server-fill, doubt->waiting->answer->re-pause per demo semantics).
+
+## Agent guidance + site profiles (2026-10-24, backend/agent-mode, uncommitted)
+- Gates doc updated (AGENTS.md rule 8): agent-path changes need the live
+  mock-ERP loop green (PO check-then-create + dedupe re-run) with run IDs
+  in LOOP_LOG before merge.
+- Generic-ERP answer: goals are task semantics; grounding is a per-connection
+  SiteProfile (entry URLs + hints). New `site.ts` (pure): Frappe defaults,
+  demo buying/selling/stock paths + sign-in hints; `resolveSiteProfile`.
+  Threaded as optional OrchestratorDeps.site (Frappe default; seam-B suite
+  untouched). Adapter takes site + nullable profile (profile-less runs sign
+  in via hints); MOCK_ERP_URL env; allowReal = stored host AND (stored
+  profile OR mock host) — clients can never buy spend on arbitrary hosts.
+- Guidance preamble in every goal (login/session, scope, masters rule,
+  exact numbers, dropdown waits, JSON-only finish). No test asserts wording.
+- Live: full-stack PO returns a REAL mock ID (run 8e2b209c proved
+  queue->COMPLETED; unaligned seeds correctly rejected as invalid, not
+  hallucinated). Dedupe leg blocked: mock is localStorage-only, so a saved
+  Browser Context Profile for the mock host is mandatory (manual user step).
+
+## Site-profile review fixes (2026-10-24, backend/agent-mode, uncommitted)
+- Second review (3 blockers) all fixed: B1 host normalization via
+  canonicalHost in site.ts (trailing-slash mock host now matches;
+  regression test added), B2 answer-route affinity (session host must
+  equal job host, normalized; job-row profile skew noted as follow-up
+  for the settings slice), B3 trim() on mapper schemas (whitespace-only
+  id/question now invalid, not DONE with garbage).
+- Nits fixed: EMPTY_HINTS const, mockHost() single source, env indent,
+  chain fallback extracted to jobSite helper, guidance blocked-clause
+  names the {"question"} JSON shape.
+- No live re-run: wire shape unchanged since the green provisioning run
+  (canonicalHost/trim/affinity are no-ops for the slash-less same-host
+  mock flow). Dedupe leg still waits on the manual mock-host profile.
+
+## Generic ERP agent phase 1 (2026-10-25, main integration pending)
+- Supersedes the live fixed PO/SO/Stock chain and external Vault dependency.
+  The live API now takes the user's instruction plus optional PDF/text/JSON
+  context and an explicit draft/submit policy. TinyFish discovers navigation;
+  it receives no hardcoded ERP product paths or login credentials.
+- Added encrypted per-user ERP credentials (AES-256-GCM; required stable
+  ERP_CREDENTIALS_KEY), direct same-origin browser login, and a BrowserAgentPort
+  boundary for future local execution. Local browser execution is not implemented.
+- Persisted chat-scoped browser profiles, requests/documents, confirmed records,
+  questions/answers, and all remote attempt IDs. A connection-wide lock prevents
+  concurrent writes. Queue requests never auto-retry; uncertain runs need explicit
+  user ERP review before the chat is unlocked. Memory remains agent-selected.
+- Added Settings login fields, per-request draft/submit confirmation, TinyFish
+  activity, questionnaire continuation, recovery confirmation, and Hindi/Tamil
+  UI copy. Existing /jobs/:id links open the owned chat. /parse opens /home.
+- API manual checks: auth required, signup/onboarding, encrypted credential storage,
+  no credential values in Settings responses, generic text attachment extraction,
+  mandatory completion mode, cross-account run denial, and credentials cleared
+  when ERP URL changes. All passed. ERP URLs now preserve application subpaths.
+- Gates: bun run check green (typecheck + lint); bun test 48 pass / 0 fail.
+  React Doctor changed scope: 100/100, no issues. Full scan: 15 existing warnings
+  in unchanged UI scaffold/language-select/use-voice-input, none in the new flow.
+  The language-select cancellation reset is intentional; dictation has no cached
+  server resource to invalidate. Existing scaffold findings remain deferred as
+  previously tracked, with no lint or React Doctor configuration loosened.
+- Astra review (per user model override) completed; stale-navigation, enqueue
+  polling, and application-path trailing-slash findings fixed. Root ERP URLs
+  normalize to their origin; /app/ and /app remain distinct as required by the
+  portal. Manual URL normalization checks passed.
+- Live signup -> onboard demo host -> save login -> prepare profile succeeded.
+  Initial local validation falsely rejected TinyFish's parent-domain capture;
+  corrected to accept the captured registrable domain. Failed preflight jobs:
+  4af38702-fcd2-4c5c-8809-b9640f916e36 and
+  11313417-f17b-4faa-b225-f82f9c63664a (no agent run started).
+- Actual live task: job bd4e89b2-b7cf-4dfc-831f-802f382f04ef,
+  chat 19a771a4-d6ca-4f92-a688-721989975464,
+  TinyFish run 24532d0f-1751-45c5-8822-36c1ee281440.
+  TinyFish returned FAILED / AGENT_FAILURE: request may violate usage policies.
+  No verified ERP result or real record ID was returned. No automatic retry,
+  no dedupe leg, and no Sales Order/Stock Entry execution claimed as verified.
+  User was asked to inspect the provider run; live gate remains BLOCKED.
+- Browser UI verification also pending: existing Codex tab was a browser error
+  page and browser security denied reading it. User was asked to reload the app.
+- Merge from origin/backend/agent-mode is prepared on main but NOT committed:
+  AGENTS.md requires the live mock-ERP create/dedupe loop green before merge.
+  See specs/06-generic-agent-phase1.md for the current contract and limitations.
+
+## TinyFish Vault remote login + quotation recovery (2026-10-25)
+- Supersedes the custom remote login flow above, per user direction. Remote
+  sessions now use TinyFish Vault with one explicit credential item per approved
+  account UUID and exact ERP URL. Item metadata and ERP domain are checked before
+  queueing; no account-wide credential fallback or plaintext login in the goal.
+  The encrypted local store remains reserved for a future local browser adapter.
+- Added validated TINYFISH_VAULT_BINDINGS configuration and Vault readiness in
+  Settings. Removed direct Playwright login and its dependency. Chat profiles and
+  authentication revisions remain persisted; a changed assignment creates a new
+  profile. TinyFish currently requires a connected 1Password/Bitwarden vault.
+- The user-authorized API-only quotation test actually completed in TinyFish:
+  job 7ca83ef4-7fd9-4fa8-989d-6c629f93d2f7,
+  chat ce5f1178-bd56-4e93-842c-0a3b349e1364,
+  run b4b07048-620b-4400-890c-3836147f9ee3.
+  The provider reported draft PO-2026-00002 at
+  https://demo-erp.fukumean.me/buying/purchase-order/PO-2026-00002.
+  This run used the earlier session flow, not the new Vault path. Its saved goal
+  contained neither the demo username nor password. No independent ERP UI
+  verification or duplicate-check run is claimed.
+- The app had rejected that result because the optional question was empty.
+  Normalized blank/null optional questions and reconciled the same saved run
+  without enqueueing again. The chat now records Done with the draft ID.
+  needs_input still requires a nonempty question. Added seam-B coverage for
+  reinspection, no second enqueue, and blocking closure during inspection.
+- Astra review completed with no remaining actionable findings after fixing
+  account assignment identity and stale-inspection races. API suite: 49 passed,
+  0 failed, 157 assertions. Final bun run check passed (typecheck and lint in all
+  workspaces). React Doctor changed scope: 100/100, 23 files, no
+  issues. Restored ignored web env configuration; localhost:3002 returns HTTP 200.
+- Live Vault verification is BLOCKED on account setup: the configured TinyFish
+  account returned zero Vault connections and zero items. Asked the user to connect
+  the demo login and supply its item ID and ERP Fish account to assign. No secret
+  values requested in chat. The live create/dedupe gate and merge remain pending.
