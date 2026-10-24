@@ -2,7 +2,7 @@
 import { useState, type SyntheticEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AGENT, type AgentRunView, type AgentRunRequest } from "shared";
+import { AGENT, type AgentRunView, type AgentRunRequest, type ChatMessage } from "shared";
 import { useEnglishInput } from "@/components/language-provider";
 import { fetchAgentRuns, fetchAgentStatus, startAgent } from "@/lib/agent-api";
 import { agentUi as AGENT_UI } from "@/lib/agent-ui";
@@ -33,17 +33,22 @@ export function useAgentComposer(input: { threadId: string | null; chat: ReturnT
   const availability = useQuery({ queryKey: AGENT_UI.statusQuery, queryFn: fetchAgentStatus });
   const mutation = useMutation({
     mutationFn: async (completionMode: AgentRunRequest["completion_mode"]) => {
+      const document = input.invoice.document ?? (input.invoice.invoice ? { name: input.invoice.fileName ?? AGENT_UI.fileReady, text: JSON.stringify(input.invoice.invoice) } : undefined);
       const translated = await translate(input.chat.draft.trim(), { source: input.chat.draftLanguage, parts: input.chat.draftParts, interactive: true });
       if (!active.current) throw new Error(AGENT_UI.requestFailed);
-      const document = input.invoice.document ?? (input.invoice.invoice ? { name: input.invoice.fileName ?? AGENT_UI.fileReady, text: JSON.stringify(input.invoice.invoice) } : undefined);
-      return startAgent({ thread_id: input.threadId ?? undefined, instruction: translated.content, original: translated.original, completion_mode: completionMode, document });
+      const run = await startAgent({ thread_id: input.threadId ?? undefined, instruction: translated.content, original: translated.original, completion_mode: completionMode, document });
+      const message: ChatMessage = { role: "user", ...translated, attachment: document ? { name: document.name } : undefined };
+      return { run, message };
     },
-    onSuccess: async (run) => {
+    onSuccess: async ({ run, message }) => {
+      await client.cancelQueries({ queryKey: [PLAN_API.threads, run.thread_id] });
+      client.setQueryData<ChatMessage[]>([PLAN_API.threads, run.thread_id], [...input.chat.messages, message]);
       client.setQueryData<AgentRunView[]>([AGENT_UI.query, run.thread_id], (rows) => [...(rows ?? []), run]);
+      if (active.current) {
+        setConfirm(false); input.chat.setDraft(AGENT_UI.empty); input.invoice.removeAttachment();
+        if (!input.threadId) router.replace(`${PLAN_ROUTES.home}?thread=${encodeURIComponent(run.thread_id)}`);
+      }
       await Promise.all([client.invalidateQueries({ queryKey: THREADS_QUERY_KEY }), client.invalidateQueries({ queryKey: [PLAN_API.threads, run.thread_id] })]);
-      if (!active.current) return;
-      setConfirm(false); input.chat.setDraft(AGENT_UI.empty); input.invoice.claimThread(run.thread_id);
-      if (!input.threadId) router.replace(`${PLAN_ROUTES.home}?thread=${encodeURIComponent(run.thread_id)}`);
     },
   });
   function submit(event: SyntheticEvent<HTMLFormElement>) { event.preventDefault(); if (input.chat.draft.trim() && !mutation.isPending) { mutation.reset(); setConfirm(true); } }

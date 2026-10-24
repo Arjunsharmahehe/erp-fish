@@ -31,5 +31,7 @@ export function useInvoice(threadId: string | null) {
     }
   }
   function removeAttachment() { parseRequest.current += PLAN_LIMITS.nextOccurrence; setState(EMPTY); }
-  return { ...(state.owner === threadId ? state : EMPTY), attachFile, removeAttachment, claimThread: (id: string) => { setState((current) => ({ ...current, owner: id })); } };
+  function consumeAttachment() { setState((current) => ({ ...current, fileName: null, error: null })); }
+  function claimThread(id: string) { setState((current) => ({ ...current, owner: id })); }
+  return { ...(state.owner === threadId ? state : EMPTY), attachFile, removeAttachment, consumeAttachment, claimThread };
 }

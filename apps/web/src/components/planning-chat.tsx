@@ -2,7 +2,9 @@
 import { useCopy } from "@/hooks/use-copy";
 import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { FileTextIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Attachment, AttachmentContent, AttachmentMedia, AttachmentTitle } from "@/components/ui/attachment";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
 import { Message, MessageContent, MessageHeader } from "@/components/ui/message";
@@ -38,12 +40,20 @@ function ChatHeader({ mode }: { mode: Mode }) {
   </div>;
 }
 
+function SentAttachment({ attachment }: { attachment: ChatMessage["attachment"] }) {
+  if (!attachment) return null;
+  return <Attachment state="done">
+    <AttachmentMedia variant="icon"><FileTextIcon /></AttachmentMedia>
+    <AttachmentContent><AttachmentTitle title={attachment.name} translate="no">{attachment.name}</AttachmentTitle></AttachmentContent>
+  </Attachment>;
+}
 function ConversationMessage({ message }: { message: ChatMessage }) {
   const t = useCopy();
   const isUser = message.role === "user";
   const align = isUser ? "end" : "start";
   return <div className={cn("px-5 sm:px-8", !isUser && "pb-8")}><Message align={align}>
     <MessageContent>
+      {isUser && <SentAttachment attachment={message.attachment} />}
       {!isUser && <MessageHeader><span className="flex items-center gap-2"><BrandMark className="h-5 w-6" />{t(HOME_COPY.assistant)}</span></MessageHeader>}
       {!isUser && <ChatActivityTrace activity={message.activity ?? []} />}
       <Bubble variant={isUser ? "secondary" : "ghost"} align={align}>
@@ -112,7 +122,7 @@ function historyIsUnavailable(chat: ReturnType<typeof useChatSend>, threadId: st
 function Conversation({ threadId, invoice }: { threadId: string | null; invoice: InvoiceState }) {
   const [selectedMode, setMode] = useState<Mode | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const chat = useChatSend({ threadId, invoice: invoice.invoice, claimInvoice: invoice.claimThread });
+  const chat = useChatSend({ threadId, invoice });
   const runs = useAgentRuns(threadId);
   const mode = selectedMode ?? (runs.query.data?.length ? PLAN_MODE.agent : PLAN_MODE.planning);
   const agent = useAgentComposer({ threadId, chat, invoice });

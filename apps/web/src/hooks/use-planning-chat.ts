@@ -2,10 +2,11 @@
 import { useEnglishInput } from "@/components/language-provider";
 import { useMessageDraft } from "@/hooks/use-message-draft";
 
-import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { useEffect, useRef, useState, type RefObject, type SyntheticEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { loadThread, type ChatMessage, type Invoice, type ThreadSummary } from "@/lib/plan-api";
+import { loadThread, type ChatMessage, type ThreadSummary } from "@/lib/plan-api";
+import type { useInvoice } from "./use-invoice";
 import { CHAT_ACTIVITY, type ChatActivity } from "shared";
 
 
@@ -36,25 +37,32 @@ async function cacheAcceptedReply(client: QueryClient, options: { threadId: stri
   await client.invalidateQueries({ queryKey: WORKSPACE_QUERY.memory });
 }
 
-function useOpenThread(options: { invoice: Invoice | null; claimInvoice: (id: string) => void }) {
-  const router = useRouter();
-  return function openThread(id: string) {
-    if (options.invoice) options.claimInvoice(id);
-    router.replace(`${PLAN_ROUTES.home}?thread=${encodeURIComponent(id)}`);
-  };
+function useChatFeedback(active: RefObject<boolean>) {
+  const [activity, setActivity] = useState<ChatActivity[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  function report(step: ChatActivity) {
+    if (active.current) setActivity((current) => current.some((item) => item.id === step.id) ? current.map((item) => item.id === step.id ? step : item) : [...current, step]);
+  }
+  function fail(cause: unknown) {
+    if (!active.current) return;
+    setError(cause instanceof Error ? cause.message : PLAN_COPY.chatFailed);
+    setActivity((current) => current.map((step) => step.status === CHAT_ACTIVITY.running ? { ...step, status: CHAT_ACTIVITY.error } : step));
+  }
+  function reset() { setError(null); setActivity([]); }
+  return { activity, error, report, fail, reset };
 }
-export function useChatSend(options: { threadId: string | null; invoice: Invoice | null; claimInvoice: (id: string) => void }) {
+
+export function useChatSend(options: { threadId: string | null; invoice: ReturnType<typeof useInvoice> }) {
   const englishInput = useEnglishInput();
-  const { threadId, invoice } = options;
-  const openThread = useOpenThread(options);
+  const { threadId } = options;
+  const router = useRouter();
   const queryClient = useQueryClient();
   const thread = useQuery({ queryKey: [PLAN_API.threads, threadId], queryFn: () => loadThread(threadId ?? ""), enabled: threadId !== null });
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
-  const [activity, setActivity] = useState<ChatActivity[]>([]);
   const { draft, draftLanguage, draftParts, setDraft, replaceDraft, setVoiceDraft } = useMessageDraft();
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const active = useActiveConversation();
+  const feedback = useChatFeedback(active);
   const isActive = () => active.current;
   const messages = [...(thread.data ?? []), ...localMessages];
   const blocked = sending || (threadId !== null && thread.isPending);
@@ -63,34 +71,36 @@ export function useChatSend(options: { threadId: string | null; invoice: Invoice
     event.preventDefault();
     const content = draft.trim();
     if (!content || blocked) return;
-    setError(null);
+    const invoice = options.invoice.invoice;
+    const attachment = invoice && options.invoice.fileName ? { name: options.invoice.fileName } : undefined;
+    feedback.reset();
     setSending(true);
-    setActivity([]);
     try {
       const translated = await englishInput(content, { source: draftLanguage, parts: draftParts, interactive: true });
       if (!isActive()) return;
-      const next: ChatMessage = { role: "user", ...translated };
-      setLocalMessages((current) => [...current, next]);
-      setDraft("");
-      const response = await sendChatStream({ messages: [...messages, next], threadId, invoice, onActivity: (step) => {
-        if (active.current) setActivity((current) => current.some((item) => item.id === step.id) ? current.map((item) => item.id === step.id ? step : item) : [...current, step]);
-      } });
+      const next: ChatMessage = { role: "user", ...translated, attachment };
+      const response = await sendChatStream({ messages: [...messages, next], threadId, invoice, onAccepted: () => {
+        if (!active.current) return;
+        setLocalMessages((current) => [...current, next]);
+        setDraft("");
+        options.invoice.consumeAttachment();
+      }, onActivity: feedback.report });
       const reply: ChatMessage = { role: "assistant", content: response.message, activity: response.activity, citations: response.citations };
       const accepted = [...messages, next, reply];
       await cacheAcceptedReply(queryClient, { threadId: response.thread_id, messages: accepted, title: content, isNew: threadId === null });
       if (!active.current) return;
-      setActivity([]);
+      feedback.reset();
       setLocalMessages(threadId ? [] : accepted);
-      if (!threadId) openThread(response.thread_id);
-    } catch (error) {
-      if (active.current) {
-        setError(error instanceof Error ? error.message : PLAN_COPY.chatFailed);
-        setActivity((current) => current.map((step) => step.status === CHAT_ACTIVITY.running ? { ...step, status: CHAT_ACTIVITY.error } : step));
+      if (!threadId) {
+        options.invoice.claimThread(response.thread_id);
+        router.replace(`${PLAN_ROUTES.home}?thread=${encodeURIComponent(response.thread_id)}`);
       }
+    } catch (error) {
+      feedback.fail(error);
     } finally {
       setSending(false);
     }
   }
 
-  return { messages, draft, draftLanguage, draftParts, setDraft, replaceDraft, setVoiceDraft, sending, error, thread, send, activity };
+  return { messages, draft, draftLanguage, draftParts, setDraft, replaceDraft, setVoiceDraft, sending, error: feedback.error, thread, send, activity: feedback.activity };
 }
