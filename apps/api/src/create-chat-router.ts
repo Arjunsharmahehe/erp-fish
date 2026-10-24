@@ -36,9 +36,9 @@ const PLAN_CHAT_FAILED_MESSAGE = "plan_chat_failed" as const;
 const CHAT_TITLE_MAX_LENGTH = 60 as const;
 const NEW_CHAT_TITLE = "New chat" as const;
 
-function tryCreateChatLlm(): PlanChatLlmPort | undefined {
+function tryCreateChatLlm(sessionId: string): PlanChatLlmPort | undefined {
   try {
-    return createChatLlm();
+    return createChatLlm({ sessionId });
   } catch (error) {
     if (error instanceof Error && error.message === MISSING_CHAT_LLM_CONFIG_MESSAGE) {
       return undefined;
@@ -115,7 +115,7 @@ async function runAssistantTurn(options: {
     result = await planChat(
       { messages: request.messages, invoice: request.invoice },
       {
-        llm: tryCreateChatLlm(),
+        llm: tryCreateChatLlm(threadId),
         toolsAvailable: env.TINYFISH_API_KEY !== undefined,
       },
     );

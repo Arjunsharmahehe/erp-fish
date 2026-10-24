@@ -267,3 +267,22 @@
 - Full agentic loop (model calling tools) still needs OPENAI_BASE_URL /
   OPENAI_API_KEY / OPENAI_MODEL — no LLM key in this environment, so
   that last mile is unverified until keys land.
+
+## Plan-mode live agentic loop via OpenCode Go (2026-10-24, backend/plan-mode)
+- Go endpoint (from docs): https://opencode.ai/inference/go/openai/v1/chat/
+  completions, model deepseek-v4.1-flash, key from user in gitignored
+  apps/api/.env.local (not committed). Free-tier console endpoint refused
+  (FreeTierError: usable only inside OpenCode; paid console has no funds).
+- Fixes to make the loop run: x-opencode-session header per thread
+  (Go 400s without it; thread UUID doubles as the session id),
+  User-Agent erp-fish-plan-mode, json_object modelOptions (this endpoint
+  rejects strict json_schema), system prompt via systemPrompts (in-messages
+  system entry is not honored on this path — wire capture proved it was
+  dropped), prompt demands JSON-only reply (gateway requires the word json).
+- Verified live: GST question over demo invoice -> 5 TinyFish tool calls,
+  answer cites invoice values + real URLs (cbic-gst.gov.in, indiafilings);
+  thread persists with live answer. Live text parse also fixed by the same
+  systemPrompts migration (create-invoice-llm.ts) and verified.
+- Review (Muse-family subagent): no blockers; nits applied. Declined:
+  threading toolsAvailable structurally (ambient env is airtight), unit
+  coverage of tool wiring (no confirmed seam; live-verified instead).
