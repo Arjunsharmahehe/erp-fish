@@ -5,6 +5,8 @@ import {
   InvoiceJSONSchema,
   JobInputSchema,
   JobStatusSchema,
+  MemoryEntrySchema,
+  QUESTION_STATUS_ANSWERED,
   QuestionStatusSchema,
   TASK_STATUS_DONE,
   TaskKindSchema,
@@ -12,6 +14,7 @@ import {
   type AgentResultIds,
   type JobInput,
   type JobStatus,
+  type MemoryEntry,
   type QuestionStatus,
   type TaskKind,
   type TaskStatus,
@@ -83,6 +86,14 @@ answer TEXT,
 status TEXT NOT NULL
 )` as const;
 
+const SCHEMA_MEMORY = `CREATE TABLE IF NOT EXISTS memory(
+erp_host TEXT NOT NULL,
+q_norm TEXT NOT NULL,
+answer TEXT NOT NULL,
+updated_at TEXT NOT NULL,
+PRIMARY KEY(erp_host, q_norm)
+)` as const;
+
 const QUERY_INSERT_JOB =
   "INSERT INTO jobs(id, erp_host, profile_id, invoice_json, instruction, status, created_at) VALUES(?, ?, ?, ?, ?, ?, ?)" as const;
 const QUERY_UPDATE_JOB_STATUS = "UPDATE jobs SET status = ? WHERE id = ?" as const;
@@ -97,6 +108,13 @@ const QUERY_FIND_TASKS = "SELECT * FROM tasks WHERE job_id = ?" as const;
 const QUERY_INSERT_QUESTION =
   "INSERT INTO questions(id, job_id, q_norm, q_raw, status) VALUES(?, ?, ?, ?, ?)" as const;
 const QUERY_FIND_QUESTIONS = "SELECT * FROM questions WHERE job_id = ?" as const;
+const QUERY_FIND_QUESTION = "SELECT * FROM questions WHERE id = ?" as const;
+const QUERY_ANSWER_QUESTION = "UPDATE questions SET answer = ?, status = ? WHERE id = ?" as const;
+const QUERY_UPSERT_MEMORY =
+  "INSERT INTO memory(erp_host, q_norm, answer, updated_at) VALUES(?, ?, ?, ?) ON CONFLICT(erp_host, q_norm) DO UPDATE SET answer = excluded.answer, updated_at = excluded.updated_at" as const;
+const QUERY_FIND_MEMORY_ANSWER =
+  "SELECT answer FROM memory WHERE erp_host = ? AND q_norm = ?" as const;
+const QUERY_LIST_MEMORY = "SELECT erp_host, q_norm, answer FROM memory WHERE erp_host = ?" as const;
 
 const CompletedOutputRowSchema = z.object({
   output_id: z.string().nullable(),
@@ -122,6 +140,7 @@ export function openDb(path: string = IN_MEMORY_DB_PATH): Database {
   db.exec(SCHEMA_JOBS);
   db.exec(SCHEMA_TASKS);
   db.exec(SCHEMA_QUESTIONS);
+  db.exec(SCHEMA_MEMORY);
   return db;
 }
 
@@ -221,4 +240,38 @@ export function insertQuestion(
 export function findQuestionRows(db: Database, jobId: string): QuestionRow[] {
   const rows: unknown[] = db.query(QUERY_FIND_QUESTIONS).all(jobId);
   return rows.map((row) => QuestionRowSchema.parse(row));
+}
+
+export function findQuestionRow(db: Database, questionId: string): QuestionRow | undefined {
+  const row: unknown = db.query(QUERY_FIND_QUESTION).get(questionId);
+  if (row === undefined || row === null) {
+    return undefined;
+  }
+  return QuestionRowSchema.parse(row);
+}
+
+export function answerQuestionRow(db: Database, questionId: string, answer: string): void {
+  db.query(QUERY_ANSWER_QUESTION).run(answer, QUESTION_STATUS_ANSWERED, questionId);
+}
+
+const MemoryAnswerRowSchema = z.object({ answer: z.string() });
+
+export function upsertMemory(
+  db: Database,
+  row: { erpHost: string; qNorm: string; answer: string; updatedAt: string },
+): void {
+  db.query(QUERY_UPSERT_MEMORY).run(row.erpHost, row.qNorm, row.answer, row.updatedAt);
+}
+
+export function findMemoryAnswer(db: Database, erpHost: string, qNorm: string): string | undefined {
+  const row: unknown = db.query(QUERY_FIND_MEMORY_ANSWER).get(erpHost, qNorm);
+  if (row === undefined || row === null) {
+    return undefined;
+  }
+  return MemoryAnswerRowSchema.parse(row).answer;
+}
+
+export function listMemoryRows(db: Database, erpHost: string): MemoryEntry[] {
+  const rows: unknown[] = db.query(QUERY_LIST_MEMORY).all(erpHost);
+  return rows.map((row) => MemoryEntrySchema.parse(row));
 }

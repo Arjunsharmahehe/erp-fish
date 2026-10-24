@@ -42,6 +42,7 @@ import {
   type JobEvent,
 } from "../src/orchestrator";
 import { createJob, getJob } from "../src/orchestrator";
+import { eventTypes } from "./helpers";
 
 const STUB_THROW_MESSAGE = "stub_agent_throw" as const;
 const SINGLE_COUNT = 1 as const;
@@ -108,7 +109,7 @@ test("full job returns all three canned ids in purchase sale stock order", async
   expect(view.tasks[0]?.output_id).toBe(DEMO_PO_ID);
   expect(view.tasks[1]?.output_id).toBe(DEMO_SO_ID);
   expect(view.tasks[2]?.output_id).toBe(DEMO_STOCK_ID);
-  expect(events.map((event) => event.type)).toEqual([
+  expect(eventTypes(events)).toEqual([
     EVENT_STARTED,
     EVENT_PO_COMPLETED,
     EVENT_SO_COMPLETED,
@@ -142,7 +143,7 @@ test("retry with the same invoice number and supplier reuses all three ids", asy
   expect(calls.po).toHaveLength(SINGLE_COUNT);
   expect(calls.so).toHaveLength(SINGLE_COUNT);
   expect(calls.stock).toHaveLength(SINGLE_COUNT);
-  const types = events.map((event) => event.type);
+  const types = eventTypes(events);
   expect(types).toContain(EVENT_PO_REUSED);
   expect(types).toContain(EVENT_SO_REUSED);
   expect(types).toContain(EVENT_STOCK_REUSED);
@@ -237,7 +238,7 @@ test("agent doubt pauses the job with a queued question instead of guessing", as
   expect(view.questions[0]?.q_norm).toBe(DEMO_QUESTION_NORM);
   expect(view.questions[0]?.status).toBe(QUESTION_STATUS_QUEUED);
   expect(view.tasks[0]?.status).toBe(TASK_STATUS_PAUSED);
-  expect(events.map((event) => event.type)).toContain(EVENT_WAITING);
+  expect(eventTypes(events)).toContain(EVENT_WAITING);
 });
 
 test("unexpected agent failure fails the job loudly", async () => {

@@ -1,5 +1,20 @@
 # LOOP_LOG — erp-fish no-keys build loop
 
+## 06: Ask-once Memory slice
+- Seams: B+C — answerQuestion/listMemory/getLearnedContext + memory-hit retry in runChainStep.
+- Red-green: 5 memory tests first (missing surface), green; review fixes kept green. 21 pass total.
+- Reviews: Nemotron sweep (eventTypes helper for 4× events.map); Muse review
+  2 blockers fixed (resume reuses paused task row via resumedTaskId — no more
+  PAUSED+DONE duplicates; retry-doubt queues the latest question) + trim
+  before store, mustId loud-fail wrapper, blank/double-answer tests, QA-carry
+  assertion. Left: getJob corrupt-JSON info (writers always validate).
+- Decisions: goal-aware stub branches only on goal content (faithful LLM-agent
+  fake, no call-count logic); memory-hit retries once with explicit Q:A then
+  queues; SO/Stock dedupe stays invoice-based (supplier party; customer mapping
+  is a live-tuning concern for the keyed phase).
+- Verified: resume completes chain reusing paused task, repeat job zero
+  questions, host scoping, list/count, stale single-retry.
+
 ## 05: Sale Order plus Stock chain
 - Seam: B — same createJob extended to PO→SO→STOCK via runChainStep+haltJob.
 - Red-green: rewrote job tests for 3-step world (missing methods/events first),

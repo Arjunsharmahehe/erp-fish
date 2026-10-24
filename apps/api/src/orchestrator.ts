@@ -6,6 +6,7 @@ import {
   JOB_STATUS_WAITING,
   JobInputSchema,
   JobViewSchema,
+  MIN_TEXT_LENGTH,
   QUESTION_STATUS_QUEUED,
   TASK_KIND_PO,
   TASK_KIND_SO,
@@ -17,19 +18,25 @@ import {
   type AgentResultIds,
   type JobInput,
   type JobView,
+  type MemoryEntry,
   type TaskKind,
 } from "shared";
 import {
+  answerQuestionRow,
   findCompletedOutput,
   findJobRow,
+  findMemoryAnswer,
+  findQuestionRow,
   findQuestionRows,
   findTaskRows,
   insertJob,
   insertQuestion,
   insertTask,
+  listMemoryRows,
   updateJobResultIds,
   updateJobStatus,
   updateTask,
+  upsertMemory,
 } from "./db";
 import { logger } from "./logger";
 
@@ -41,6 +48,7 @@ export const EVENT_SO_REUSED = "so_reused" as const;
 export const EVENT_STOCK_COMPLETED = "stock_completed" as const;
 export const EVENT_STOCK_REUSED = "stock_reused" as const;
 export const EVENT_WAITING = "waiting" as const;
+export const EVENT_MEMORY_HIT = "memory_hit" as const;
 export const EVENT_COMPLETED = "completed" as const;
 export const EVENT_FAILED = "failed" as const;
 
@@ -53,6 +61,7 @@ export type JobEventType =
   | typeof EVENT_STOCK_COMPLETED
   | typeof EVENT_STOCK_REUSED
   | typeof EVENT_WAITING
+  | typeof EVENT_MEMORY_HIT
   | typeof EVENT_COMPLETED
   | typeof EVENT_FAILED;
 
@@ -66,10 +75,21 @@ export type JobEvent = {
 
 export const STEP_OK = "ok" as const;
 export const STEP_NEEDS_INPUT = "needs_input" as const;
+const STEP_FAILED = "failed" as const;
 
 export type AgentStepResult =
   | { status: typeof STEP_OK; orderId: string }
   | { status: typeof STEP_NEEDS_INPUT; question: string };
+
+export type QaPair = {
+  question: string;
+  answer: string;
+};
+
+export type StepAttemptResult =
+  | { status: typeof STEP_OK; orderId: string }
+  | { status: typeof STEP_NEEDS_INPUT; question: string }
+  | { status: typeof STEP_FAILED };
 
 export type AgentPort = {
   runPurchaseOrder: (input: { goal: string }) => Promise<AgentStepResult>;
@@ -85,6 +105,12 @@ export type OrchestratorDeps = {
   db: Database;
   agent: AgentPort;
   onEvent?: (event: JobEvent) => void;
+};
+
+export type AnswerInput = {
+  jobId: string;
+  questionId: string;
+  answer: string;
 };
 
 const GOAL_ON = "On" as const;
@@ -107,17 +133,50 @@ const GOAL_DROPDOWNS =
 const GOAL_RETURN_PO = "Return JSON {purchase_order_id}." as const;
 const GOAL_RETURN_SO = "Return JSON {sales_order_id}." as const;
 const GOAL_RETURN_STOCK = "Return JSON {stock_entry_id}." as const;
+const GOAL_LEARNED_PREFIX = "Learned answers:" as const;
+const GOAL_QA_Q = "Q:" as const;
+const GOAL_QA_A = "A:" as const;
 const INVOICE_NO_KEY = "invoice_no" as const;
 const SUPPLIER_KEY = "supplier" as const;
 const SPACE = " " as const;
+const NEWLINE = "\n" as const;
 const EQUALS = "=" as const;
 const PLUS = "+" as const;
+const EMPTY_LEARNED = "" as const;
 const JOB_LOG_MESSAGE = "job_transition" as const;
 const JOB_NOT_FOUND_MESSAGE = "job_not_found_after_create" as const;
+const ANSWER_TARGET_MESSAGE = "answer_target_not_queued" as const;
+const INVALID_ANSWER_MESSAGE = "answer_must_not_be_blank" as const;
+const RESUME_STATE_MESSAGE = "resume_state_missing_prior_id" as const;
+
+const STEP_ORDER: readonly TaskKind[] = [TASK_KIND_PO, TASK_KIND_SO, TASK_KIND_STOCK];
 
 type ChainStep =
   | { finished: false; orderId: string }
   | { finished: true; status: typeof JOB_STATUS_WAITING | typeof JOB_STATUS_FAILED };
+
+function formatQa(question: string, answer: string): string {
+  return [GOAL_QA_Q, question, GOAL_QA_A, answer].join(SPACE);
+}
+
+export function listMemory(db: Database, erpHost: string): MemoryEntry[] {
+  return listMemoryRows(db, erpHost);
+}
+
+export function getLearnedContext(db: Database, erpHost: string): string {
+  const entries: MemoryEntry[] = listMemory(db, erpHost);
+  if (entries.length === 0) {
+    return EMPTY_LEARNED;
+  }
+  return entries.map((entry) => formatQa(entry.q_norm, entry.answer)).join(NEWLINE);
+}
+
+function withQa(goal: string, qa: QaPair | undefined): string {
+  if (qa === undefined) {
+    return goal;
+  }
+  return [goal, formatQa(qa.question, qa.answer)].join(NEWLINE);
+}
 
 function buildWhere(input: JobInput): string {
   return [
@@ -133,6 +192,7 @@ function buildWhere(input: JobInput): string {
 
 function buildGoal(
   input: JobInput,
+  learned: string,
   args: {
     path: string;
     search: string;
@@ -141,7 +201,7 @@ function buildGoal(
     returnClause: string;
   },
 ): string {
-  return [
+  const body: string[] = [
     GOAL_ON,
     `${input.erp_host}${args.path}`,
     args.search,
@@ -153,11 +213,15 @@ function buildGoal(
     input.instruction,
     GOAL_DROPDOWNS,
     args.returnClause,
-  ].join(SPACE);
+  ];
+  if (learned === EMPTY_LEARNED) {
+    return body.join(SPACE);
+  }
+  return [GOAL_LEARNED_PREFIX, learned, ...body].join(SPACE);
 }
 
-function buildPoGoal(input: JobInput): string {
-  return buildGoal(input, {
+function buildPoGoal(input: JobInput, learned: string): string {
+  return buildGoal(input, learned, {
     path: GOAL_PURCHASE_ORDER_PATH,
     search: GOAL_SEARCH_PO,
     create: GOAL_ELSE_CREATE_PO,
@@ -166,8 +230,8 @@ function buildPoGoal(input: JobInput): string {
   });
 }
 
-function buildSoGoal(input: JobInput, purchaseOrderId: string): string {
-  return buildGoal(input, {
+function buildSoGoal(input: JobInput, learned: string, purchaseOrderId: string): string {
+  return buildGoal(input, learned, {
     path: GOAL_SALES_ORDER_PATH,
     search: GOAL_SEARCH_SO,
     create: GOAL_ELSE_CREATE_SO,
@@ -176,8 +240,13 @@ function buildSoGoal(input: JobInput, purchaseOrderId: string): string {
   });
 }
 
-function buildStockGoal(input: JobInput, purchaseOrderId: string, salesOrderId: string): string {
-  return buildGoal(input, {
+function buildStockGoal(
+  input: JobInput,
+  learned: string,
+  purchaseOrderId: string,
+  salesOrderId: string,
+): string {
+  return buildGoal(input, learned, {
     path: GOAL_STOCK_ENTRY_PATH,
     search: GOAL_SEARCH_STOCK,
     create: GOAL_ELSE_CREATE_STOCK,
@@ -226,16 +295,113 @@ export function getJob(db: Database, jobId: string): JobView | undefined {
   });
 }
 
+function mustId(value: string | undefined): string {
+  if (value === undefined) {
+    throw new Error(RESUME_STATE_MESSAGE);
+  }
+  return value;
+}
+
+function rebuildCollected(db: Database, jobId: string): AgentResultIds {
+  const collected: AgentResultIds = {};
+  for (const task of findTaskRows(db, jobId)) {
+    if (task.status !== TASK_STATUS_DONE || task.output_id === null) {
+      continue;
+    }
+    if (task.kind === TASK_KIND_PO) {
+      collected.purchase_order_id = task.output_id;
+    } else if (task.kind === TASK_KIND_SO) {
+      collected.sales_order_id = task.output_id;
+    } else {
+      collected.stock_entry_id = task.output_id;
+    }
+  }
+  return collected;
+}
+
+function pausedStep(db: Database, jobId: string): { index: number; taskId: string } | undefined {
+  const paused = findTaskRows(db, jobId).find((task) => task.status === TASK_STATUS_PAUSED);
+  if (paused === undefined) {
+    return undefined;
+  }
+  return { index: STEP_ORDER.indexOf(paused.kind), taskId: paused.id };
+}
+
 type StepDef = {
   kind: TaskKind;
-  completedEvent: typeof EVENT_PO_COMPLETED | typeof EVENT_SO_COMPLETED | typeof EVENT_STOCK_COMPLETED;
+  completedEvent:
+    | typeof EVENT_PO_COMPLETED
+    | typeof EVENT_SO_COMPLETED
+    | typeof EVENT_STOCK_COMPLETED;
   reusedEvent: typeof EVENT_PO_REUSED | typeof EVENT_SO_REUSED | typeof EVENT_STOCK_REUSED;
-  run: () => Promise<AgentStepResult>;
+  run: (qa: QaPair | undefined) => Promise<AgentStepResult>;
 };
 
 export async function createJob(input: JobInput, deps: OrchestratorDeps): Promise<JobView> {
   const parsed: JobInput = JobInputSchema.parse(input);
-  const emit = (event: JobEvent): void => {
+  const emit = makeEmit(deps);
+  const jobId: string = crypto.randomUUID();
+  const createdAt: string = new Date().toISOString();
+  insertJob(deps.db, {
+    id: jobId,
+    input: parsed,
+    status: JOB_STATUS_RUNNING,
+    createdAt,
+  });
+  emit({ type: EVENT_STARTED, jobId });
+  const learned: string = getLearnedContext(deps.db, parsed.erp_host);
+  return runStepsFrom(deps, parsed, learned, jobId, emit, {}, { index: 0, taskId: undefined });
+}
+
+export async function answerQuestion(
+  input: AnswerInput,
+  deps: OrchestratorDeps,
+): Promise<JobView> {
+  const trimmedAnswer: string = input.answer.trim();
+  if (trimmedAnswer.length < MIN_TEXT_LENGTH) {
+    throw new Error(INVALID_ANSWER_MESSAGE);
+  }
+  const question = findQuestionRow(deps.db, input.questionId);
+  if (
+    question === undefined ||
+    question.job_id !== input.jobId ||
+    question.status !== QUESTION_STATUS_QUEUED
+  ) {
+    throw new Error(ANSWER_TARGET_MESSAGE);
+  }
+  const job = findJobRow(deps.db, input.jobId);
+  if (job === undefined) {
+    throw new Error(JOB_NOT_FOUND_MESSAGE);
+  }
+  const parsed: JobInput = JobInputSchema.parse({
+    invoice_json: JSON.parse(job.invoice_json),
+    instruction: job.instruction,
+    erp_host: job.erp_host,
+    profile_id: job.profile_id,
+  });
+  upsertMemory(deps.db, {
+    erpHost: job.erp_host,
+    qNorm: question.q_norm,
+    answer: trimmedAnswer,
+    updatedAt: new Date().toISOString(),
+  });
+  answerQuestionRow(deps.db, input.questionId, trimmedAnswer);
+  updateJobStatus(deps.db, input.jobId, JOB_STATUS_RUNNING);
+  const emit = makeEmit(deps);
+  const collected: AgentResultIds = rebuildCollected(deps.db, input.jobId);
+  const learned: string = getLearnedContext(deps.db, job.erp_host);
+  const resume = pausedStep(deps.db, input.jobId);
+  if (resume === undefined || resume.index >= STEP_ORDER.length) {
+    return toView(deps.db, input.jobId);
+  }
+  return runStepsFrom(deps, parsed, learned, input.jobId, emit, collected, {
+    index: resume.index,
+    taskId: resume.taskId,
+  });
+}
+
+function makeEmit(deps: OrchestratorDeps): (event: JobEvent) => void {
+  return (event: JobEvent): void => {
     logger.info(
       {
         jobId: event.jobId,
@@ -248,58 +414,86 @@ export async function createJob(input: JobInput, deps: OrchestratorDeps): Promis
     );
     deps.onEvent?.(event);
   };
-  const jobId: string = crypto.randomUUID();
-  const createdAt: string = new Date().toISOString();
-  insertJob(deps.db, {
-    id: jobId,
-    input: parsed,
-    status: JOB_STATUS_RUNNING,
-    createdAt,
-  });
-  emit({ type: EVENT_STARTED, jobId });
+}
 
-  const collected: AgentResultIds = {};
-  const po = await runChainStep(deps, parsed, jobId, emit, {
-    kind: TASK_KIND_PO,
-    completedEvent: EVENT_PO_COMPLETED,
-    reusedEvent: EVENT_PO_REUSED,
-    run: () => deps.agent.runPurchaseOrder({ goal: buildPoGoal(parsed) }),
-  });
-  if (po.finished) {
-    return haltJob(deps, jobId, collected, po.status, emit);
-  }
-  collected.purchase_order_id = po.orderId;
+async function runStepsFrom(
+  deps: OrchestratorDeps,
+  parsed: JobInput,
+  learned: string,
+  jobId: string,
+  emit: (event: JobEvent) => void,
+  collected: AgentResultIds,
+  resume: { index: number; taskId: string | undefined },
+): Promise<JobView> {
+  const defs: StepDef[] = [
+    {
+      kind: TASK_KIND_PO,
+      completedEvent: EVENT_PO_COMPLETED,
+      reusedEvent: EVENT_PO_REUSED,
+      run: (qa: QaPair | undefined) =>
+        deps.agent.runPurchaseOrder({ goal: withQa(buildPoGoal(parsed, learned), qa) }),
+    },
+    {
+      kind: TASK_KIND_SO,
+      completedEvent: EVENT_SO_COMPLETED,
+      reusedEvent: EVENT_SO_REUSED,
+      run: (qa: QaPair | undefined) =>
+        deps.agent.runSalesOrder({
+          goal: withQa(buildSoGoal(parsed, learned, mustId(collected.purchase_order_id)), qa),
+          purchaseOrderId: mustId(collected.purchase_order_id),
+        }),
+    },
+    {
+      kind: TASK_KIND_STOCK,
+      completedEvent: EVENT_STOCK_COMPLETED,
+      reusedEvent: EVENT_STOCK_REUSED,
+      run: (qa: QaPair | undefined) =>
+        deps.agent.runStockEntry({
+          goal: withQa(
+            buildStockGoal(
+              parsed,
+              learned,
+              mustId(collected.purchase_order_id),
+              mustId(collected.sales_order_id),
+            ),
+            qa,
+          ),
+          purchaseOrderId: mustId(collected.purchase_order_id),
+          salesOrderId: mustId(collected.sales_order_id),
+        }),
+    },
+  ];
 
-  const so = await runChainStep(deps, parsed, jobId, emit, {
-    kind: TASK_KIND_SO,
-    completedEvent: EVENT_SO_COMPLETED,
-    reusedEvent: EVENT_SO_REUSED,
-    run: () =>
-      deps.agent.runSalesOrder({
-        goal: buildSoGoal(parsed, po.orderId),
-        purchaseOrderId: po.orderId,
-      }),
-  });
-  if (so.finished) {
-    return haltJob(deps, jobId, collected, so.status, emit);
+  try {
+    let resumedTaskId: string | undefined = resume.taskId;
+    for (const step of defs.slice(resume.index)) {
+      const outcome: ChainStep = await runChainStep(
+        deps,
+        parsed,
+        jobId,
+        emit,
+        step,
+        resumedTaskId,
+      );
+      resumedTaskId = undefined;
+      if (outcome.finished) {
+        return haltJob(deps, jobId, collected, outcome.status, emit);
+      }
+      if (step.kind === TASK_KIND_PO) {
+        collected.purchase_order_id = outcome.orderId;
+      } else if (step.kind === TASK_KIND_SO) {
+        collected.sales_order_id = outcome.orderId;
+      } else {
+        collected.stock_entry_id = outcome.orderId;
+      }
+    }
+  } catch (error) {
+    const reason: string = error instanceof Error ? error.message : String(error);
+    updateJobStatus(deps.db, jobId, JOB_STATUS_FAILED);
+    emit({ type: EVENT_FAILED, jobId, reason });
+    logger.error({ jobId, reason }, JOB_LOG_MESSAGE);
+    return toView(deps.db, jobId);
   }
-  collected.sales_order_id = so.orderId;
-
-  const stock = await runChainStep(deps, parsed, jobId, emit, {
-    kind: TASK_KIND_STOCK,
-    completedEvent: EVENT_STOCK_COMPLETED,
-    reusedEvent: EVENT_STOCK_REUSED,
-    run: () =>
-      deps.agent.runStockEntry({
-        goal: buildStockGoal(parsed, po.orderId, so.orderId),
-        purchaseOrderId: po.orderId,
-        salesOrderId: so.orderId,
-      }),
-  });
-  if (stock.finished) {
-    return haltJob(deps, jobId, collected, stock.status, emit);
-  }
-  collected.stock_entry_id = stock.orderId;
 
   updateJobResultIds(deps.db, jobId, collected);
   updateJobStatus(deps.db, jobId, JOB_STATUS_DONE);
@@ -325,6 +519,7 @@ async function runChainStep(
   jobId: string,
   emit: (event: JobEvent) => void,
   step: StepDef,
+  resumedTaskId: string | undefined,
 ): Promise<ChainStep> {
   const reused: string | undefined = findCompletedOutput(
     deps.db,
@@ -346,34 +541,74 @@ async function runChainStep(
     return { finished: false, orderId: reused };
   }
 
-  const taskId: string = crypto.randomUUID();
-  insertTask(deps.db, { id: taskId, jobId, kind: step.kind, status: TASK_STATUS_RUNNING });
+  const taskId: string = resumedTaskId ?? crypto.randomUUID();
+  if (resumedTaskId === undefined) {
+    insertTask(deps.db, { id: taskId, jobId, kind: step.kind, status: TASK_STATUS_RUNNING });
+  } else {
+    updateTask(deps.db, taskId, TASK_STATUS_RUNNING, null);
+  }
 
-  let result: AgentStepResult;
+  const first: StepAttemptResult = await invokeStep(deps, jobId, taskId, emit, step, undefined);
+  if (first.status === STEP_OK) {
+    updateTask(deps.db, taskId, TASK_STATUS_DONE, first.orderId);
+    emit({ type: step.completedEvent, jobId, taskId, orderId: first.orderId });
+    return { finished: false, orderId: first.orderId };
+  }
+  if (first.status === STEP_FAILED) {
+    return { finished: true, status: JOB_STATUS_FAILED };
+  }
+
+  const qNorm: string = first.question.toLowerCase().trim();
+  const memorized: string | undefined = findMemoryAnswer(deps.db, parsed.erp_host, qNorm);
+  let latest: string = first.question;
+  if (memorized !== undefined) {
+    emit({ type: EVENT_MEMORY_HIT, jobId, taskId });
+    const retry: StepAttemptResult = await invokeStep(
+      deps,
+      jobId,
+      taskId,
+      emit,
+      step,
+      { question: first.question, answer: memorized },
+    );
+    if (retry.status === STEP_OK) {
+      updateTask(deps.db, taskId, TASK_STATUS_DONE, retry.orderId);
+      emit({ type: step.completedEvent, jobId, taskId, orderId: retry.orderId });
+      return { finished: false, orderId: retry.orderId };
+    }
+    if (retry.status === STEP_FAILED) {
+      return { finished: true, status: JOB_STATUS_FAILED };
+    }
+    latest = retry.question;
+  }
+
+  insertQuestion(deps.db, {
+    id: crypto.randomUUID(),
+    jobId,
+    qNorm: latest.toLowerCase().trim(),
+    qRaw: latest,
+    status: QUESTION_STATUS_QUEUED,
+  });
+  updateTask(deps.db, taskId, TASK_STATUS_PAUSED, null);
+  emit({ type: EVENT_WAITING, jobId, taskId, reason: latest });
+  return { finished: true, status: JOB_STATUS_WAITING };
+}
+
+async function invokeStep(
+  deps: OrchestratorDeps,
+  jobId: string,
+  taskId: string,
+  emit: (event: JobEvent) => void,
+  step: StepDef,
+  qa: QaPair | undefined,
+): Promise<StepAttemptResult> {
   try {
-    result = await step.run();
+    return await step.run(qa);
   } catch (error) {
     const reason: string = error instanceof Error ? error.message : String(error);
     updateTask(deps.db, taskId, TASK_STATUS_FAILED, null);
     emit({ type: EVENT_FAILED, jobId, taskId, reason });
     logger.error({ jobId, taskId, reason }, JOB_LOG_MESSAGE);
-    return { finished: true, status: JOB_STATUS_FAILED };
+    return { status: STEP_FAILED };
   }
-
-  if (result.status === STEP_NEEDS_INPUT) {
-    insertQuestion(deps.db, {
-      id: crypto.randomUUID(),
-      jobId,
-      qNorm: result.question.toLowerCase().trim(),
-      qRaw: result.question,
-      status: QUESTION_STATUS_QUEUED,
-    });
-    updateTask(deps.db, taskId, TASK_STATUS_PAUSED, null);
-    emit({ type: EVENT_WAITING, jobId, taskId, reason: result.question });
-    return { finished: true, status: JOB_STATUS_WAITING };
-  }
-
-  updateTask(deps.db, taskId, TASK_STATUS_DONE, result.orderId);
-  emit({ type: step.completedEvent, jobId, taskId, orderId: result.orderId });
-  return { finished: false, orderId: result.orderId };
 }

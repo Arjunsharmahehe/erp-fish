@@ -121,8 +121,9 @@ export const TaskStatusSchema = z.enum([
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 
 export const QUESTION_STATUS_QUEUED = "queued" as const;
+export const QUESTION_STATUS_ANSWERED = "answered" as const;
 
-export const QuestionStatusSchema = z.enum([QUESTION_STATUS_QUEUED]);
+export const QuestionStatusSchema = z.enum([QUESTION_STATUS_QUEUED, QUESTION_STATUS_ANSWERED]);
 
 export type QuestionStatus = z.infer<typeof QuestionStatusSchema>;
 
@@ -171,7 +172,19 @@ export const JobViewSchema = z.object({
 
 export type JobView = z.infer<typeof JobViewSchema>;
 
+export const MemoryEntrySchema = z.object({
+  erp_host: z.string().min(MIN_TEXT_LENGTH),
+  q_norm: z.string().min(MIN_TEXT_LENGTH),
+  answer: z.string().min(MIN_TEXT_LENGTH),
+});
+
+export type MemoryEntry = z.infer<typeof MemoryEntrySchema>;
+
 export const DEMO_ERP_HOST = "https://erp.demo.local" as const;
+export const DEMO_ERP_HOST_2 = "https://erp2.demo.local" as const;
+export const DEMO_INVOICE_NO_2 = "INV-DEMO-0002" as const;
+export const DEMO_INVOICE_NO_3 = "INV-DEMO-0003" as const;
+export const DEMO_ANSWER = "Main Warehouse" as const;
 export const DEMO_PROFILE_ID = "profile-demo-001" as const;
 export const DEMO_INSTRUCTION = "Create PO only" as const;
 export const DEMO_PO_ID = "PO-DEMO-0001" as const;
