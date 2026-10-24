@@ -8,6 +8,7 @@ import {
   JobViewSchema,
   MIN_TEXT_LENGTH,
   QUESTION_STATUS_QUEUED,
+  SPACE,
   TASK_KIND_PO,
   TASK_KIND_SO,
   TASK_KIND_STOCK,
@@ -138,7 +139,6 @@ const GOAL_QA_Q = "Q:" as const;
 const GOAL_QA_A = "A:" as const;
 const INVOICE_NO_KEY = "invoice_no" as const;
 const SUPPLIER_KEY = "supplier" as const;
-const SPACE = " " as const;
 const NEWLINE = "\n" as const;
 const EQUALS = "=" as const;
 const PLUS = "+" as const;

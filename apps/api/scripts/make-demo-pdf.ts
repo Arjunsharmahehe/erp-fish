@@ -7,6 +7,7 @@ import {
   DEMO_RATE_1,
   DEMO_RATE_2,
   DEMO_SUPPLIER,
+  SPACE,
 } from "shared";
 
 const PDF_HEADER = "%PDF-1.4" as const;
@@ -23,7 +24,6 @@ const TRAILER_BODY = "<< /Size 6 /Root 1 0 R >>" as const;
 const STARTXREF = "startxref" as const;
 const PDF_EOF = "%%EOF" as const;
 const NEWLINE = "\n" as const;
-const SPACE = " " as const;
 const PAD_WIDTH = 10 as const;
 const PAD_CHAR = "0" as const;
 

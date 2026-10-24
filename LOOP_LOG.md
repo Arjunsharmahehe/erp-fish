@@ -1,5 +1,20 @@
 # LOOP_LOG — erp-fish no-keys build loop
 
+## 02-infra-only (no keys, no daemon on this box)
+- Wrote: infra/erpnext/{README,.env.example,seed.env.example},
+  infra/tunnel/{README,cloudflared.yml}, apps/api/scripts/seed-erpnext.ts
+  (Frappe REST login + check-then-create Company/Supplier/Customer/Items/
+  Warehouse, zod boundaries, typed SeedHttpError, fail-fast env),
+  DEMO_CUSTOMER/COMPANY/ABBR/WAREHOUSE fixtures. Demo PDF already done in 03.
+- Blocked here: docker daemon cannot run (no sudo, no rootless kit) so
+  bring-up + seed are written+reviewed but NEVER executed — first-run
+  verification pending on demo machine; TinyFish live proof needs keys.
+- Reviews: Nemotron sweep — SPACE hoisted to shared (4th site); its 2nd
+  finding (missing infra/erpnext/.env.example) is a FALSE POSITIVE, file
+  exists with ERPNEXT_VERSION pin (dotfile missed by its listing). Muse
+  APPROVE 0 blockers (2 infos + 2 lows, non-blocking).
+- Tag verified live: frappe/erpnext v16.52.1 (amd64+arm64) via Hub API.
+
 ## 06: Ask-once Memory slice
 - Seams: B+C — answerQuestion/listMemory/getLearnedContext + memory-hit retry in runChainStep.
 - Red-green: 5 memory tests first (missing surface), green; review fixes kept green. 21 pass total.

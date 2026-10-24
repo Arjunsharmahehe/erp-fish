@@ -3,6 +3,7 @@ import * as z from "zod";
 export const HELLO_STATUS_OK = "ok" as const;
 export const HELLO_MESSAGE = "Hello from erp-fish API" as const;
 export const MIN_TEXT_LENGTH = 1 as const;
+export const SPACE = " " as const;
 
 export const API_PATHS = {
   hello: "/api/hello",
@@ -181,6 +182,10 @@ export const MemoryEntrySchema = z.object({
 export type MemoryEntry = z.infer<typeof MemoryEntrySchema>;
 
 export const DEMO_ERP_HOST = "https://erp.demo.local" as const;
+export const DEMO_CUSTOMER = "DEMO-CUST-001" as const;
+export const DEMO_COMPANY_NAME = "Demo Fish Company" as const;
+export const DEMO_COMPANY_ABBR = "DFC" as const;
+export const DEMO_WAREHOUSE = "Main Warehouse" as const;
 export const DEMO_ERP_HOST_2 = "https://erp2.demo.local" as const;
 export const DEMO_INVOICE_NO_2 = "INV-DEMO-0002" as const;
 export const DEMO_INVOICE_NO_3 = "INV-DEMO-0003" as const;
