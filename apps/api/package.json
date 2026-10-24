@@ -9,6 +9,7 @@
     "@hono/zod-validator": "^0.9.1",
     "@t3-oss/env-core": "^0.13.11",
     "@tanstack/ai": "^1.0.0",
+    "@tanstack/ai-groq": "^1.0.0",
     "@tanstack/ai-openai": "^1.0.0",
     "@tiny-fish/sdk": "^0.10.0",
     "hono": "^4.13.13",

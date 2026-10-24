@@ -37,6 +37,7 @@ export const env = createEnv({
     OPENAI_BASE_URL: z.string().min(MIN_TEXT_LENGTH).optional(),
     OPENAI_API_KEY: z.string().min(MIN_TEXT_LENGTH).optional(),
     OPENAI_MODEL: z.string().min(MIN_TEXT_LENGTH).optional(),
+    GROQ_API_KEY: z.string().min(MIN_TEXT_LENGTH).optional(),
   },
   runtimeEnv: process.env,
 });

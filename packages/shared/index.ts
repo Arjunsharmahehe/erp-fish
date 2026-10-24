@@ -224,3 +224,5 @@ export const DEMO_QUESTION_RAW = "Which warehouse should receive this stock?" as
 export const DEMO_QUESTION_NORM = "which warehouse should receive this stock?" as const;
 export * from "./learning";
 export * from "./connection";
+export * from "./language";
+export * from "./model-settings";

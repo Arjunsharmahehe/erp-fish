@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OriginalMessageSchema } from "./language";
 const MAX_TEXT_LENGTH = 4000;
 const MAX_QUESTION_LENGTH = 500;
 const MAX_CHOICES = 8;
@@ -36,7 +37,7 @@ export type SavedMemory = z.infer<typeof SavedMemorySchema>;
 export const MemoryEditSchema = z.object({ question: text, answer: text, context: text }).strict();
 export const RememberAnswerSchema = z.object({ question_id: text, question: text, context: text }).strict();
 export const MemorySearchSchema = z.object({ query: z.string().trim().max(LEARNING.maxText) });
-export const QuestionAnswerSchema = z.object({ answer: text }).strict();
+export const QuestionAnswerSchema = z.object({ answer: text, original: OriginalMessageSchema.optional() }).strict();
 export const LearningQuestionRowSchema = LearningQuestionSchema.omit({ choices: true }).extend({ choices: z.string() });
 export const QuestionResumeRowSchema = z.object({ invoice_json: z.string().nullable(), resume_status: z.enum(["idle", "running", "done", "failed"]) });
 export const MemoryDecisionSchema = z.object({ question: text, context: text }).nullable();

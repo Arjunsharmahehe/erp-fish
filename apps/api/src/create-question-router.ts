@@ -60,7 +60,7 @@ export function createQuestionRouter(db: Database) {
       const answer = c.req.valid("json").answer;
       const answered = db.transaction(() => {
         const updated = answerLearningQuestion(db, { scope: scope, id: id, answer: answer });
-        insertChatMessage(db, { id: crypto.randomUUID(), threadId: question.source_id, role: "user", content: answer, createdAt: new Date().toISOString() });
+        insertChatMessage(db, { id: crypto.randomUUID(), threadId: question.source_id, role: "user", content: answer, original: c.req.valid("json").original, createdAt: new Date().toISOString() });
         return updated;
       })();
       return c.json(await resumeQuestion(db, { scope: scope, question: answered }));

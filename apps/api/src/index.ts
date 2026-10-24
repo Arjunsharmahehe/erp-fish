@@ -30,10 +30,12 @@ import { createAuthRouter } from "./create-auth-router";
 import { createLearningRouter } from "./learning-router";
 import { createQuestionRouter } from "./create-question-router";
 import { createSettingsRouter } from "./create-settings-router";
+import { createSpeechRouter } from "./create-speech-router";
 import { findJobRow, findQuestionRow, openDb } from "./db";
 import { MISSING_DEMO_CONFIG_MESSAGE, createDemoAgent } from "./demoAgent";
 import { DEMO_AGENT_ON, env } from "./env";
 import { createInvoiceLlm } from "./create-invoice-llm";
+import { resolveModelConfig } from "./model-settings";
 import { logger } from "./logger";
 import { answerQuestion, createJob, getJob, listMemory } from "./orchestrator";
 import { parseInvoiceJson, parseInvoicePdf, parseInvoiceText } from "./parse";
@@ -59,9 +61,9 @@ const STREAM_QUESTION_EVENT = "question" as const;
 const STREAM_DONE_EVENT = "done" as const;
 const PROFILE_REQUIRED = "Connect your ERP login in Settings before starting a job.";
 
-function requireLlm() {
+function requireLlm(userId: string) {
   try {
-    return createInvoiceLlm();
+    return createInvoiceLlm(resolveModelConfig(jobsDb, userId));
   } catch {
     throw new HTTPException(SERVICE_UNAVAILABLE_STATUS, {
       message: MISSING_LLM_CONFIG_MESSAGE,
@@ -91,13 +93,14 @@ const app = new Hono()
     return c.json(parsed);
   })
   .post(API_PATHS.parse, async (c) => {
+    const user = await readSessionUser(c, jobsDb);
     logger.info({ route: API_PATHS.parse }, PARSE_LOG_MESSAGE);
     const contentType: string | undefined = c.req.header(CONTENT_TYPE_HEADER);
     const isPdf: boolean = contentType?.includes(PDF_MIME) ?? false;
     const isOctet: boolean = contentType?.includes(OCTET_MIME) ?? false;
     if (isPdf || isOctet) {
       const buffer: ArrayBuffer = await c.req.arrayBuffer();
-      return c.json(await parseInvoicePdf(new Uint8Array(buffer), requireLlm()));
+      return c.json(await parseInvoicePdf(new Uint8Array(buffer), requireLlm(user.id)));
     }
     const body: unknown = await c.req.json().catch(() => {
       throw new HTTPException(BAD_REQUEST_STATUS, { message: INVALID_PARSE_BODY_MESSAGE });
@@ -110,7 +113,7 @@ const app = new Hono()
       return c.json(parseInvoiceJson(request.data.invoiceJson));
     }
     if (request.data.text !== undefined) {
-      return c.json(await parseInvoiceText(request.data.text, requireLlm()));
+    return c.json(await parseInvoiceText(request.data.text, requireLlm(user.id)));
     }
     return c.json({ status: PARSE_NEEDS_FIX, reason: FIX_REASON_EMPTY_REQUEST });
   })
@@ -202,6 +205,7 @@ const app = new Hono()
   .route("/", createLearningRouter(jobsDb))
   .route("/", createQuestionRouter(jobsDb))
   .route("/", createSettingsRouter(jobsDb))
+  .route("/", createSpeechRouter(jobsDb))
   .route("/", createChatRouter(jobsDb));
 
 export type AppType = typeof app;

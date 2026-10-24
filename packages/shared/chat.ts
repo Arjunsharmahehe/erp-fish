@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { InvoiceJSONSchema, MIN_TEXT_LENGTH } from "./base";
 import { ChatActivitiesSchema } from "./chat-activity";
+import { OriginalMessageSchema } from "./language";
 
 export const MIN_CHAT_MESSAGES = 1 as const;
 
@@ -16,6 +17,7 @@ export const ChatMessageSchema = z.object({
   content: z.string().min(MIN_TEXT_LENGTH),
   activity: ChatActivitiesSchema.optional(),
   citations: z.array(z.string()).optional(),
+  original: OriginalMessageSchema.optional(),
 });
 
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;

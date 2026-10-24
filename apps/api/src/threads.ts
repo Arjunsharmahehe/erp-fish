@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { OriginalMessageSchema, StoredOriginalSchema, type OriginalMessage } from "shared";
 import { ChatMessageSchema, ChatResponseSchema, StoredChatDetailsSchema, type ChatResponse, type ChatMessage, type ChatRole, type ThreadUpdate } from "shared";
 import {
   ChatMessageRowSchema,
@@ -30,6 +31,9 @@ archived INTEGER NOT NULL DEFAULT 0
 
 const THREAD_SELECT = "SELECT t.*, COALESCE(s.pinned, 0) AS pinned, COALESCE(s.archived, 0) AS archived FROM chat_threads t LEFT JOIN chat_thread_state s ON s.thread_id = t.id";
 export const SCHEMA_CHAT_DETAILS = "CREATE TABLE IF NOT EXISTS chat_message_details(message_id TEXT PRIMARY KEY, details TEXT NOT NULL)";
+export const SCHEMA_CHAT_ORIGINALS = "CREATE TABLE IF NOT EXISTS chat_message_originals(message_id TEXT PRIMARY KEY, original TEXT NOT NULL)";
+const INSERT_ORIGINAL = "INSERT INTO chat_message_originals(message_id, original) VALUES(?, ?)";
+const DELETE_ORIGINALS = "DELETE FROM chat_message_originals WHERE message_id IN (SELECT id FROM chat_messages WHERE thread_id = ?)";
 const INSERT_CHAT_DETAILS = "INSERT INTO chat_message_details(message_id, details) VALUES(?, ?)";
 const DELETE_CHAT_DETAILS = "DELETE FROM chat_message_details WHERE message_id IN (SELECT id FROM chat_messages WHERE thread_id = ?)";
 
@@ -41,7 +45,7 @@ const QUERY_FIND_CHAT_THREAD = `${THREAD_SELECT} WHERE t.id = ?`;
 const QUERY_INSERT_CHAT_MESSAGE =
   "INSERT INTO chat_messages(id, thread_id, role, content, created_at) VALUES(?, ?, ?, ?, ?)" as const;
 const QUERY_LIST_CHAT_MESSAGES =
-  "SELECT m.*, d.details FROM chat_messages m LEFT JOIN chat_message_details d ON d.message_id = m.id WHERE m.thread_id = ? ORDER BY m.created_at ASC, m.rowid ASC" as const;
+  "SELECT m.*, d.details, o.original FROM chat_messages m LEFT JOIN chat_message_details d ON d.message_id = m.id LEFT JOIN chat_message_originals o ON o.message_id = m.id WHERE m.thread_id = ? ORDER BY m.created_at ASC, m.rowid ASC" as const;
 const UPDATE_THREAD_TITLE = "UPDATE chat_threads SET title = ? WHERE id = ?";
 const UPSERT_THREAD_STATE = "INSERT INTO chat_thread_state(thread_id, pinned, archived) VALUES(?, ?, ?) ON CONFLICT(thread_id) DO UPDATE SET pinned = excluded.pinned, archived = excluded.archived";
 const DELETE_THREAD_MESSAGES = "DELETE FROM chat_messages WHERE thread_id = ?";
@@ -59,6 +63,7 @@ export function updateChatThread(db: Database, options: { thread: ChatThreadRow;
 export function deleteChatThread(db: Database, threadId: string): void {
   db.transaction(() => {
     db.query(DELETE_CHAT_DETAILS).run(threadId);
+    db.query(DELETE_ORIGINALS).run(threadId);
     db.query(DELETE_THREAD_MESSAGES).run(threadId);
     db.query(DELETE_THREAD_STATE).run(threadId);
     db.query(DELETE_THREAD).run(threadId);
@@ -87,7 +92,7 @@ export function listChatThreads(db: Database, userId: string): ChatThreadRow[] {
 
 export function insertChatMessage(
   db: Database,
-  row: { id: string; threadId: string; role: ChatRole; content: string; createdAt: string },
+  row: { id: string; threadId: string; role: ChatRole; content: string; createdAt: string; original?: OriginalMessage },
 ): void {
   db.query(QUERY_INSERT_CHAT_MESSAGE).run(
     row.id,
@@ -96,6 +101,7 @@ export function insertChatMessage(
     row.content,
     row.createdAt,
   );
+  if (row.original) db.query(INSERT_ORIGINAL).run(row.id, JSON.stringify(OriginalMessageSchema.parse(row.original)));
 }
 
 export function listChatMessages(db: Database, threadId: string): ChatMessage[] {
@@ -103,8 +109,9 @@ export function listChatMessages(db: Database, threadId: string): ChatMessage[] 
   return rows.map((row) => {
     const parsed: ChatMessageRow = ChatMessageRowSchema.parse(row);
     const stored = StoredChatDetailsSchema.parse(row);
+    const original = StoredOriginalSchema.parse(row).original;
     const details = stored.details === null ? undefined : ChatResponseSchema.parse(JSON.parse(stored.details));
-    return ChatMessageSchema.parse({ role: parsed.role, content: parsed.content, activity: details?.activity, citations: details?.citations });
+    return ChatMessageSchema.parse({ role: parsed.role, content: parsed.content, activity: details?.activity, citations: details?.citations, original: original ? OriginalMessageSchema.parse(JSON.parse(original)) : undefined });
   });
 }
 

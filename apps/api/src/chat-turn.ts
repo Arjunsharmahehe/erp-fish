@@ -21,6 +21,7 @@ import { listSavedMemories, listLearningQuestions } from "./learning";
 import { LEARNING_PROMPT, type LearningToolContext } from "./learning-tools";
 import { withChatLock } from "./chat-lock";
 import { requireThreadScope } from "./thread-scope";
+import { resolveModelConfig } from "./model-settings";
 import {
   findChatThread,
   insertChatMessage,
@@ -58,7 +59,7 @@ export function ownedThread(db: Database, options: { threadId: string; userId: s
 
 function tryCreateChatLlm(options: { sessionId: string; onActivity: ActivityListener; learning: LearningToolContext }): PlanChatLlmPort | undefined {
   try {
-    return createChatLlm(options);
+    return createChatLlm({ ...options, config: resolveModelConfig(options.learning.db, options.learning.scope.userId) });
   } catch (error) {
     if (error instanceof Error && error.message === MISSING_CHAT_LLM_CONFIG_MESSAGE) {
       return undefined;
@@ -72,7 +73,7 @@ function titleFromChat(messages: ChatMessage[]): string {
   if (firstUserMessage === undefined) {
     return NEW_CHAT_TITLE;
   }
-  return firstUserMessage.content.slice(0, CHAT_TITLE_MAX_LENGTH);
+  return (firstUserMessage.original?.text ?? firstUserMessage.content).slice(0, CHAT_TITLE_MAX_LENGTH);
 }
 
 export function resolveThreadId(
@@ -113,6 +114,7 @@ export function storeNewUserTurns(
       threadId: turn.threadId,
       role: message.role,
       content: message.content,
+      original: message.original,
       createdAt: turn.now,
     });
   }

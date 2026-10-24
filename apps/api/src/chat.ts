@@ -19,6 +19,7 @@ const BROWSING_UNAVAILABLE_NOTE =
   "Web browsing is unavailable in this environment; answer from the invoice context only." as const;
 const CHAT_DEGRADED_MESSAGE =
   "I cannot browse the web or reach a model in this environment yet, so I cannot answer. Configure the OpenAI-compatible model and TinyFish keys to enable planning chat." as const;
+const ENGLISH_CANONICAL_PROMPT = "Always communicate in English, including responses, questions, choices, tool arguments and memories. The client handles translation. In response prose put ERP portal labels, document types, company and party names, warehouse names, identifiers and literal field values in Markdown backticks, preserving their original spelling. Never translate ERP data. Treat any original-language display metadata as display-only; reason from canonical message content.";
 const PLAN_CHAT_LOG_MESSAGE = "plan_chat_completed" as const;
 
 export interface ChatToolSpec {
@@ -48,7 +49,7 @@ export interface PlanChatDeps {
 }
 
 function buildSystemPrompt(invoice: InvoiceJSON | undefined, toolsAvailable: boolean): string {
-  const sections: string[] = [PLANNING_SYSTEM_PROMPT];
+  const sections: string[] = [PLANNING_SYSTEM_PROMPT, ENGLISH_CANONICAL_PROMPT];
   if (invoice !== undefined) {
     sections.push(`${INVOICE_CONTEXT_LABEL} ${JSON.stringify(invoice)}`);
   }

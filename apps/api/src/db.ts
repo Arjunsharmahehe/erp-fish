@@ -25,12 +25,13 @@ import {
   type QuestionRow,
   type TaskRow,
 } from "./rows";
-import { SCHEMA_CHAT_MESSAGES, SCHEMA_CHAT_THREADS, SCHEMA_THREAD_STATE, SCHEMA_CHAT_DETAILS } from "./threads";
+import { SCHEMA_CHAT_MESSAGES, SCHEMA_CHAT_THREADS, SCHEMA_THREAD_STATE, SCHEMA_CHAT_DETAILS, SCHEMA_CHAT_ORIGINALS } from "./threads";
 import { SCHEMA_USERS } from "./users";
 import { LEARNING_SQL } from "./learning";
 import { JOB_OWNERS_SQL } from "./job-ownership";
 import { connectionSql as CONNECTION_SQL } from "./connection-sql";
 import { THREAD_SCOPE_SQL } from "./thread-scope";
+import { modelSettingsSql as MODEL_SETTINGS_SQL } from "./model-settings-sql";
 
 export const IN_MEMORY_DB_PATH = ":memory:" as const;
 
@@ -120,12 +121,14 @@ export function openDb(path: string = IN_MEMORY_DB_PATH): Database {
   db.run(SCHEMA_CHAT_MESSAGES);
   db.run(SCHEMA_THREAD_STATE);
   db.run(SCHEMA_CHAT_DETAILS);
+  db.run(SCHEMA_CHAT_ORIGINALS);
   db.run(LEARNING_SQL.questions);
   db.run(LEARNING_SQL.memories);
   db.run(LEARNING_SQL.blockedSources);
   db.run(JOB_OWNERS_SQL.schema);
   db.run(CONNECTION_SQL.schema);
   db.run(THREAD_SCOPE_SQL.schema);
+  db.run(MODEL_SETTINGS_SQL.schema);
   return db;
 }
 
