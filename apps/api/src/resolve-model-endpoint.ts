@@ -1,7 +1,8 @@
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import { HTTPException } from "hono/http-exception";
-import { MODEL_SETTINGS } from "shared";
+import { MODEL_SETTINGS, BROWSER } from "shared";
+import { env } from "./env";
 
 const BAD_REQUEST = 400;
 const IPV4 = 4;
@@ -36,11 +37,14 @@ function publicAddress(address: string) {
 }
 export async function resolveModelEndpoint(endpoint: string) {
   const url = new URL(endpoint);
+  const local = env.ERP_FISH_MODE === BROWSER.local;
+  const HTTPS = "https:";
+  if (!local && url.protocol !== HTTPS) throw new HTTPException(BAD_REQUEST, { message: MODEL_SETTINGS.invalidUrl });
   const hostname = url.hostname.replace(/^\[|\]$/g, "");
   let addresses;
   try { addresses = await lookup(hostname, { all: true, order: "verbatim" }); }
   catch { throw new HTTPException(BAD_REQUEST, { message: MODEL_SETTINGS.invalidUrl }); }
   const [first = null] = addresses;
-  if (!first || addresses.some((entry) => !publicAddress(entry.address))) throw new HTTPException(BAD_REQUEST, { message: MODEL_SETTINGS.invalidUrl });
+  if (!first || (!local && addresses.some((entry) => !publicAddress(entry.address)))) throw new HTTPException(BAD_REQUEST, { message: MODEL_SETTINGS.invalidUrl });
   return { url, hostname, address: first.address };
 }

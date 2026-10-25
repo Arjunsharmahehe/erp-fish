@@ -1,0 +1,15 @@
+.git
+**/node_modules
+**/.next
+**/.env*
+**/*.db*
+**/.browser-data
+**/*.tsbuildinfo
+**/*.log
+**/.tmp-*
+.agents
+.codex
+tmp
+coverage
+LOOP_LOG*
+specs

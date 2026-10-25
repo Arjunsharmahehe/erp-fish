@@ -1,5 +1,5 @@
 import { request as httpsRequest, type RequestOptions } from "node:https";
-import type { IncomingMessage } from "node:http";
+import { request as httpRequest, type IncomingMessage } from "node:http";
 import { HTTPException } from "hono/http-exception";
 import { MODEL_SETTINGS } from "shared";
 import { resolveModelEndpoint } from "./resolve-model-endpoint";
@@ -8,6 +8,8 @@ const REDIRECT_START = 300;
 const REDIRECT_END = 400;
 const BAD_GATEWAY = 502;
 const HTTPS_PORT = 443;
+const HTTP_PORT = 80;
+const HTTP_PROTOCOL = "http:";
 const HOST_HEADER = "host";
 const ACCEPT_ENCODING = "accept-encoding";
 const IDENTITY_ENCODING = "identity";
@@ -39,7 +41,8 @@ function responseStream(message: IncomingMessage) {
 }
 function sendRequest(options: RequestOptions, body: ArrayBuffer) {
   return new Promise<Response>((resolve, reject) => {
-    const request = httpsRequest(options, (message) => {
+    const send = options.protocol === HTTP_PROTOCOL ? httpRequest : httpsRequest;
+    const request = send(options, (message) => {
       try {
         const status = message.statusCode ?? BAD_GATEWAY;
         // Never forward the provider credential to a redirect target.
@@ -63,6 +66,6 @@ export function createModelFetch(endpoint: string) {
     const resolved = await resolveModelEndpoint(endpoint);
     const headers = Object.fromEntries(incoming.headers); headers[HOST_HEADER] = resolved.url.host; headers[ACCEPT_ENCODING] = IDENTITY_ENCODING;
     // Connect to the checked IP, retaining the provider's hostname for TLS and Host.
-    return sendRequest({ hostname: resolved.address, servername: resolved.hostname, port: resolved.url.port || HTTPS_PORT, path: resolved.url.pathname, method: incoming.method, headers, signal: incoming.signal }, await incoming.arrayBuffer());
+    return sendRequest({ protocol: resolved.url.protocol, hostname: resolved.address, servername: resolved.hostname, port: resolved.url.port || (resolved.url.protocol === HTTP_PROTOCOL ? HTTP_PORT : HTTPS_PORT), path: resolved.url.pathname, method: incoming.method, headers, signal: incoming.signal }, await incoming.arrayBuffer());
   };
 }

@@ -1,7 +1,9 @@
 "use client";
 import Image from "next/image";
 import { CheckIcon, CircleAlertIcon, MessageCircleQuestionIcon } from "lucide-react";
-import { AGENT, type AgentRunView } from "shared";
+import { AGENT, BROWSER, type AgentRunView } from "shared";
+import { BrowserViewer } from "./browser-viewer";
+import { browserUi } from "@/lib/browser-ui";
 import { Trace, TraceCollapsible, TraceCollapsibleContent, TraceCollapsibleTrigger, TraceIcon, TraceLine, TraceTitle } from "@/components/ui/trace";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
@@ -40,7 +42,7 @@ export function AgentRunTrace({ run }: { run: AgentRunView }) {
   return <div className="flex flex-col gap-4"><Trace><TraceCollapsible defaultOpen={working || error}>
     <div className="flex flex-wrap items-center gap-3"><TraceCollapsibleTrigger><TraceLine status={working ? "running" : error ? "error" : undefined}>
       <TraceIcon><RunIcon status={run.status} /></TraceIcon><TraceTitle>{t(LABELS[run.status])}</TraceTitle>
-    </TraceLine></TraceCollapsibleTrigger><span className="partner-logo-surface"><Image src={brand.tinyfish} alt={brand.tinyfishAlt} width={brand.tinyfishWidth} height={brand.tinyfishHeight} className="h-5 w-auto" /></span><Badge variant="outline">{t(run.completion_mode === AGENT.modes.draft ? COPY.draft : COPY.submit)}</Badge></div>
+    </TraceLine></TraceCollapsibleTrigger>{run.provider === BROWSER.local ? <Badge variant="secondary">{t(browserUi.local)}</Badge> : <span className="partner-logo-surface"><Image src={brand.tinyfish} alt={brand.tinyfishAlt} width={brand.tinyfishWidth} height={brand.tinyfishHeight} className="h-5 w-auto" /></span>}<Badge variant="outline">{t(run.completion_mode === AGENT.modes.draft ? COPY.draft : COPY.submit)}</Badge>{run.provider === BROWSER.local && <BrowserViewer run={run} />}</div>
     <TraceCollapsibleContent><RunDetails run={run} /></TraceCollapsibleContent>
   </TraceCollapsible></Trace><span className="sr-only" role="status">{t(LABELS[run.status])}</span>
     <RunFeedback run={run} />

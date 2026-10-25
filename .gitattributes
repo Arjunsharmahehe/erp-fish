@@ -1,0 +1,2 @@
+# Keep the Docker entrypoint executable on Linux after cloning on Windows.
+*.sh text eol=lf

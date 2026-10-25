@@ -4,6 +4,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { createJobRouter } from "./create-job-router";
+import { createBrowserRouter } from "./create-browser-router";
+import { recoverLocalBrowsers } from "./local-browser-runtime";
 import { createAgentDocumentRouter } from "./create-agent-document-router";
 import {
   API_PATHS,
@@ -61,6 +63,7 @@ function requireLlm(userId: string) {
 const jobsDb: Database = openDb(env.DB_PATH);
 const RECOVER_INTERRUPTED_RESUMES = "UPDATE learning_questions SET resume_status='failed' WHERE resume_status='running'";
 jobsDb.run(RECOVER_INTERRUPTED_RESUMES);
+recoverLocalBrowsers(jobsDb);
 
 const app = new Hono()
   .use(CORS_WILDCARD_PATH, cors({ origin: env.CORS_ORIGIN, credentials: true }))
@@ -110,6 +113,7 @@ const app = new Hono()
     );
   })
   .route("/", createJobRouter(jobsDb))
+  .route("/", createBrowserRouter(jobsDb))
   .route("/", createAgentDocumentRouter(jobsDb))
   .route("/", createAuthRouter(jobsDb))
   .route("/", createLearningRouter(jobsDb))

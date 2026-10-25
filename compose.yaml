@@ -1,0 +1,62 @@
+name: erp-fish
+services:
+  api:
+    build:
+      context: .
+      target: api
+    init: true
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      ERP_FISH_MODE: ${ERP_FISH_MODE:-local}
+      PORT: 3001
+      CORS_ORIGIN: ${WEB_ORIGIN:-http://localhost:3002}
+      DB_PATH: /data/erp-fish.db
+      LOCAL_BROWSER_DATA_DIR: /data/browser
+      LOCAL_BROWSER_HEADLESS: "false"
+      JWT_SECRET: ${JWT_SECRET:?Run scripts/setup-local.ps1 first}
+      ERP_CREDENTIALS_KEY: ${ERP_CREDENTIALS_KEY:?Run scripts/setup-local.ps1 first}
+      TINYFISH_API_KEY: ${TINYFISH_API_KEY:-}
+      TINYFISH_VAULT_BINDINGS: ${TINYFISH_VAULT_BINDINGS:-[]}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    volumes:
+      - erp-data:/data
+    ports:
+      - "127.0.0.1:${API_PORT:-3001}:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    shm_size: 1gb
+    security_opt:
+      - seccomp=./docker/chromium-seccomp.json
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:3001/api/hello'); process.exit(r.ok ? 0 : 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  web:
+    environment:
+      API_INTERNAL_URL: http://api:3001
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL:-http://localhost:3001}
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3002}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+volumes:
+  erp-data:

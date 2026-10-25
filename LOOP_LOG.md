@@ -584,3 +584,85 @@
 - Integration is organized into five commits: backend/frontend merge, sent
   attachment presentation, visible completion choices, blocker questionnaire,
   and verification documentation. Local secret env files and databases are excluded.
+
+## Local Chromium agent and Windows Docker deployment (2026-10-25)
+- Implemented on feature/local-browser. ERP_FISH_MODE controls deployment policy:
+  local permits per-account Chromium selection and defaults to it without a
+  TinyFish key; production always uses TinyFish and rejects local browser APIs.
+  NODE_ENV retains standard Next.js meanings. Remote authentication remains
+  TinyFish Vault; local credentials are injected by a secure browser action.
+- Generic DOM tools run through the account's compatible model, with no fixed
+  ERP selectors or doctype paths. Provider, attempts, result and per-chat profile
+  are persisted. Session cookies are encrypted and scoped to account/ERP/profile;
+  ERP cookie paths are retained. Navigation stays within the connected origin.
+  Draft finalization controls and implicit Enter submission are blocked. Unknown
+  action failures stop for review rather than retry a possible write.
+- Added translated local settings/login forms, a live authenticated read-only
+  browser viewer and Stop control. Local status uses login wording, remote status
+  retains Vault wording. API error logging omits provider payloads and secrets.
+- Added non-root API/Chromium/Xvfb and standalone Next Docker images, a persistent
+  data volume, loopback ports, health checks, Chromium seccomp profile, stable
+  secret generation, and Windows setup documentation. Internal web authentication
+  uses the Compose API hostname instead of the browser's public localhost URL.
+- Containerized live seam-B loop: signup, onboard isolated mock ERP, save local
+  credentials and personal model, POST /api/jobs with the frozen DEMO_INVOICE.
+  Job 426b8b48-4250-42da-93b7-1ada4eb577e3, local run
+  509aeb7d-60bc-48a1-8ef8-1696bfac5225 created draft PO-DEMO-0001.
+  Replay job 21771abd-37b1-415c-9830-f507e69b8ce3, local run
+  c97c0413-20ad-45ed-aec1-5bd364460641 returned the same ID, state existing.
+  Mock counters: one login across both runs, three searches, exactly one draft
+  POST, zero submissions. Both runs served owned JPEG viewer frames with no-store.
+  No real ERP records were changed by this feature's verification.
+- Manual production boundary checks passed: local preference cannot select local
+  in production; local settings mutation, credential mutation, viewer and Stop
+  return 403; absent TinyFish returns unavailable; private HTTP ERP/model URLs
+  are rejected. Completed local history remains readable without a live provider.
+- Browser safety checks passed for draft Enter/submit-value blocking, overlapping
+  secret redaction, redaction before truncation and origin restrictions. Cookie
+  checks confirmed path persistence, third-party exclusion and wrong-owner/ERP
+  decryption rejection. Astra review findings were fixed; final review found no
+  concrete blockers. All checks used isolated accounts and fixture data.
+- Recreated both containers with final images. Account authentication, encrypted
+  model/login settings, completed history and browser login survived. Viewer UI
+  displayed a live frame; unauthenticated access returned 401 and another account
+  received 404. Stop on read-only job 95e22d63-a3cf-4f08-b2c6-d732c5848989,
+  local run f671985a-4bca-4558-96b5-4bd8a04ab788 closed Chromium, returned uncertain
+  for review, and removed the live frame. Settings and viewer rendered without
+  browser errors. Local selection is forced visibly when TinyFish is absent.
+- Final gates: bun run check green; 53 API tests, 0 failures, 169 assertions;
+  React Doctor changed scope 100/100, no issues. Full-project baseline warnings
+  remain as documented above. Docker API and web images built successfully and
+  both services passed health checks. Verification stack uses ports 3016/3017;
+  the existing development API was restarted after confirming no active runs.
+  Implementation branch: feature/local-browser. No merge to main.
+
+## Local browser clarification-first correction (2026-10-25)
+- Investigated user job f891888b-ddbe-4546-81df-f2f127880127, browser run
+  0c297c86-3bcb-49c6-b60a-d631e6720f48. Sanitized logs showed more than 50 browser
+  actions followed by an uncertain result, without a questionnaire. The user's
+  run was not replayed and its ERP records were not modified during diagnosis.
+- Updated the local system/tool prompt: missing/conflicting facts require an
+  early needs_input result; a saved record is not required before asking.
+  Clarification is conditional on a real blocker, so clear and resumed requests
+  proceed. Limit each ambiguous fact to two focused read-only lookups; stop on
+  repeated screens/errors; do not switch document types or create master data to
+  work around a blocker. Questions use the existing choices/custom-answer flow.
+  These are model instructions, not a deterministic loop detector.
+- Added the reusable manual seam-B harness
+  apps/api/scripts/local-browser-blocker-loop.ts and README instructions. The
+  frozen invoice lacks a required delivery warehouse; the fixture exposes two
+  valid choices and an unrelated Sales Order form. Initial-attempt browser action
+  counts come from scoped Docker job/run logs, including reads and repeated clicks.
+- Live Docker harness passed: job 85a6572d-0792-488e-86f1-d3e8941926df, question
+  run 0abaa20a-0eea-441f-a1e7-9b3ff760db5a paused after 8 browser actions with
+  relevant choices, zero writes and zero unrelated-form visits. Answering via
+  the API resumed run 30c3da81-ced4-4737-9b1b-56d8f55b9f29 and saved draft
+  PO-DEMO-0001. Replay job 032a3dee-781b-4a02-94e6-36ee094ac1e8, run
+  d4d807ec-d80b-412d-9b1f-446b43212a95 returned the same ID as existing.
+  Total writes: one. The fixture server was stopped after verification.
+- Astra review corrected overly broad clarification wording and required actual
+  browser action telemetry in the harness; final review found no concrete issues.
+  The Docker API was rebuilt/recreated with the prompt after confirming no active
+  runs. Existing user data and the failed run's review state were preserved.
+  Final bun run check passed across all workspaces. API tests: 53 passed,
+  0 failed, 169 assertions. No frontend changes in this fix.

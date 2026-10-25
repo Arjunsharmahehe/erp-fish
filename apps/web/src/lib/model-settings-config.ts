@@ -1,7 +1,7 @@
 export const MODEL_COPY = {
   title: "AI model", description: "Bring your own OpenAI-compatible model for the agent and invoice processing.",
   url: "Completion URL", urlPlaceholder: "https://api.openai.com/v1/chat/completions",
-  urlHint: "Use a public HTTPS endpoint. You can paste the full completion URL or the API base URL.",
+  urlHint: "Paste a completion URL or API base URL. Production requires public HTTPS; local deployments also allow private HTTP endpoints.",
   model: "Model ID", modelPlaceholder: "Enter your provider's model code", modelHint: "Choose a model that supports tool calling and JSON output.",
   key: "API key", keyPlaceholder: "Enter your provider API key", savedKeyPlaceholder: "Saved securely · leave blank to keep",
   keyHint: "Stored encrypted on the server. Your saved key is never sent back to this page.",

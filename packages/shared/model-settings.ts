@@ -5,6 +5,7 @@ const MAX_URL = 2048;
 const MAX_MODEL = 200;
 const MAX_KEY = 4096;
 const HTTPS = "https:";
+const HTTP = "http:";
 export const MODEL_SETTINGS = Object.freeze({
   path: "/api/auth/model", completionSuffix: "/chat/completions",
   missing: "Add your completion URL, model, and API key in Settings.",
@@ -16,7 +17,7 @@ export const MODEL_SETTINGS = Object.freeze({
 });
 export const CompletionUrlSchema = z.url().max(MAX_URL).refine((value) => {
   const url = new URL(value);
-  return url.protocol === HTTPS && !url.username && !url.password && !url.search && !url.hash;
+  return (url.protocol === HTTPS || url.protocol === HTTP) && !url.username && !url.password && !url.search && !url.hash;
 }, MODEL_SETTINGS.invalidUrl).transform((value) => {
   const url = new URL(value);
   const path = url.pathname.replace(/\/+$/, "");

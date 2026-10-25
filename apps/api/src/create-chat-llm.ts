@@ -1,18 +1,13 @@
 import { chat } from "@tanstack/ai";
-import { openaiCompatibleText } from "@tanstack/ai-openai/compatible";
 import { ChatResultSchema, type ModelCredential } from "shared";
 import type { PlanChatLlmPort, PlanChatRequest } from "./chat";
 import { createPlanningTools } from "./create-planning-tools";
-import { createModelFetch } from "./create-model-fetch";
-import { MODEL_SETTINGS } from "shared";
+import { createModelAdapter } from "./create-model-adapter";
 import { createChatProgress, type ActivityListener } from "./chat-progress";
 import { createLearningTools, type LearningToolContext } from "./learning-tools";
 
 const CHAT_THREAD_PREFIX = "plan-chat-" as const;
 const HISTORY_MESSAGE_PREFIX = "plan-chat-history-" as const;
-const CLIENT_USER_AGENT = "erp-fish-plan-mode" as const;
-const CLIENT_USER_AGENT_HEADER = "User-Agent" as const;
-const OPENCODE_SESSION_HEADER = "x-opencode-session" as const;
 const MODEL_OPTION_RESPONSE_FORMAT = "response_format" as const;
 const JSON_OBJECT_FORMAT = "json_object" as const;
 export const MISSING_CHAT_LLM_CONFIG_MESSAGE = "missing_llm_config_openai" as const;
@@ -29,16 +24,7 @@ export function createChatLlm(options: { sessionId: string; config?: ModelCreden
     // planChat toolsAvailable flag, so the two never disagree.
     completePlanningChat: (request: PlanChatRequest) =>
       chat({
-        adapter: openaiCompatibleText(config.model, {
-          baseURL: config.completion_url.slice(0, -MODEL_SETTINGS.completionSuffix.length),
-          apiKey: config.api_key,
-          fetch: createModelFetch(config.completion_url),
-          maxRetries: 0,
-          defaultHeaders: {
-            [CLIENT_USER_AGENT_HEADER]: CLIENT_USER_AGENT,
-            [OPENCODE_SESSION_HEADER]: options.sessionId,
-          },
-        }),
+        adapter: createModelAdapter(config, options.sessionId),
         // System prompt travels via systemPrompts: a system entry inside
         // messages is not honored as a system message on this path.
         systemPrompts: [request.system],

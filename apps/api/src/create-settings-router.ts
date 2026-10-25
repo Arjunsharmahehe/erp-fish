@@ -8,6 +8,7 @@ import { readSessionUser } from "./auth";
 import { connectionState, checkedConnectionState, updateConnection } from "./connections";
 import { saveCredentials, removeCredentials } from "./erp-credentials";
 import { userMemoryScope } from "./learning-router";
+import { requireLocalBrowser } from "./browser-settings";
 export function createSettingsRouter(db: Database) {
   return new Hono()
     .get(MODEL_SETTINGS.path, async (c) => c.json(modelSettingsState(db, (await readSessionUser(c, db)).id)))
@@ -21,11 +22,13 @@ export function createSettingsRouter(db: Database) {
       return c.json(await checkedConnectionState(db, { ...user, erp_host: erpHost }));
     })
     .put(ERP_CREDENTIALS.path, zValidator("json", ErpCredentialsSchema), async (c) => {
+      requireLocalBrowser();
       const user = await readSessionUser(c, db);
       saveCredentials(db, { scope: userMemoryScope(user), input: c.req.valid("json") });
       return c.json(connectionState(db, user));
     })
     .delete(ERP_CREDENTIALS.path, async (c) => {
+      requireLocalBrowser();
       const user = await readSessionUser(c, db);
       removeCredentials(db, user.id);
       return c.json(connectionState(db, user));

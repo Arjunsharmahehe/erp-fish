@@ -5,7 +5,7 @@ import { useCopy } from "@/hooks/use-copy";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ErpLoginSettings } from "./erp-login-settings";
+import { BrowserSettings } from "./browser-settings";
 import { agentUi as AGENT_UI } from "@/lib/agent-ui";
 import { type ConnectionState } from "shared";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export function SettingsPage() {
     <WorkspaceError error={query.error} retry={() => { void query.refetch(); }} />
     <ModelSettings />
     {query.isPending ? <WorkspaceLoading /> : query.data && <>
-      <ErpAddress connection={query.data} /><ErpLoginSettings key={query.data.erp_host} connection={query.data} />
+      <ErpAddress connection={query.data} /><BrowserSettings key={query.data.erp_host} connection={query.data} />
     </>}
   </div></main>;
 }

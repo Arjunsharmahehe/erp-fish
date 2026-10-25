@@ -10,6 +10,7 @@ import { Field, FieldGroup, FieldLabel, FieldDescription } from "./ui/field";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { WorkspaceError, WorkspaceLoading } from "./workspace-feedback";
+import { agentUi } from "@/lib/agent-ui";
 const QUERY_KEY = [MODEL_SETTINGS.path];
 
 function ModelForm({ settings }: { settings: ModelSettingsState }) {
@@ -24,7 +25,7 @@ function ModelForm({ settings }: { settings: ModelSettingsState }) {
   const personalKey = settings.source === "personal" && settings.has_key;
   const mutation = useMutation({
     mutationFn: (action: "save" | "reset") => action === "reset" ? resetModelSettings() : saveModelSettings({ completion_url: url, model, ...(key.trim() ? { api_key: key } : {}) }),
-    onSuccess: async (result) => { setKey(""); setUrl(null); setModel(null); client.setQueryData(QUERY_KEY, result); await client.invalidateQueries({ queryKey: QUERY_KEY }); },
+    onSuccess: async (result) => { setKey(""); setUrl(null); setModel(null); client.setQueryData(QUERY_KEY, result); await Promise.all([client.invalidateQueries({ queryKey: QUERY_KEY }), client.invalidateQueries({ queryKey: agentUi.statusQuery })]); },
   });
   function clearFeedback() { setValidation(null); mutation.reset(); }
   return <form className="flex flex-col gap-5" onSubmit={(event) => {

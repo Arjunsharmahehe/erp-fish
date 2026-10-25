@@ -5,7 +5,7 @@ import { PLAN_API, PLAN_HTTP, PLAN_ROUTES } from "@/lib/plan-config";
 
 async function sessionUser(request: NextRequest) {
   try {
-    const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${PLAN_API.me}`, {
+    const response = await fetch(`${env.API_INTERNAL_URL ?? env.NEXT_PUBLIC_API_URL}${PLAN_API.me}`, {
       headers: { [PLAN_HTTP.cookie]: request.headers.get(PLAN_HTTP.cookie) ?? "" },
       cache: PLAN_HTTP.noStore,
     });

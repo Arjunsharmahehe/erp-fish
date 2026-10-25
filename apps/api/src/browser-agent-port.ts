@@ -5,6 +5,6 @@ export interface BrowserAuthentication { credentialReference: string; revision: 
 export interface PreparedBrowserSession extends BrowserSessionContext { credentialReference: string }
 export interface BrowserAgentPort {
   prepare: (input: { erpUrl: string; authentication: BrowserAuthentication; session: BrowserSessionContext | null }) => Promise<PreparedBrowserSession>;
-  start: (input: { erpUrl: string; goal: string; session: PreparedBrowserSession }) => Promise<string>;
+  start: (input: { erpUrl: string; goal: string; session: PreparedBrowserSession; jobId: string; completionMode: "draft" | "submit" }) => Promise<string>;
   inspect: (runId: string) => Promise<{ status: "running" } | { status: "completed"; result: AgentBrowserResult } | { status: "failed"; error: string }>;
 }

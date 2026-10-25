@@ -2,12 +2,37 @@ import { test, expect } from "bun:test";
 import { AGENT, LEARNING, DEMO_ERP_HOST, DEMO_INSTRUCTION, DEMO_PO_ID, DEMO_PROFILE_ID, DEMO_INVOICE, DEMO_WAREHOUSE, DEMO_QUESTION_RAW } from "shared";
 import { openDb } from "../src/db";
 import { insertChatThread } from "../src/threads";
-import { startAgentExecution, reconcileAgentExecution, answerAgentExecution, resolveAgentExecution } from "../src/agent-execution";
-import { findAgentRun, agentAttempts, runView } from "../src/agent-run-store";
+import { startAgentExecution, reconcileAgentExecution, reconcileStoredAgentExecution, answerAgentExecution, resolveAgentExecution } from "../src/agent-execution";
+import { findAgentRun, agentAttempts, runView, insertAgentRun, updateAgentRun } from "../src/agent-run-store";
 import type { BrowserAgentPort } from "../src/browser-agent-port";
 import { listLearningQuestions } from "../src/learning";
+import type { AgentExecutionDeps } from "../src/agent-execution";
 
 const FIXTURE = Object.freeze({ user: "fixture-user", thread: "fixture-thread", revision: "fixture-revision", reference: "fixture-vault-item", password: "fixture-password", run: "fixture-run", now: "2026-10-25T00:00:00.000Z", file: "invoice.json", title: "Invoice" });
+test("completed runs remain readable when their browser provider is unavailable", async () => {
+  const db = openDb();
+  insertChatThread(db, { id: FIXTURE.thread, userId: FIXTURE.user, title: FIXTURE.title, createdAt: FIXTURE.now });
+  const row = insertAgentRun(db, { threadId: FIXTURE.thread, userId: FIXTURE.user, erpHost: DEMO_ERP_HOST, provider: "local", request: { instruction: DEMO_INSTRUCTION, completion_mode: AGENT.modes.draft } });
+  const completed = updateAgentRun(db, { row, update: { status: AGENT.statuses.done, summary: DEMO_PO_ID } });
+  const result = await reconcileStoredAgentExecution(completed, { db, dependencies: () => { throw new Error(AGENT.missingProvider); } });
+  expect(result.status).toBe(AGENT.statuses.done);
+  expect(result.summary).toBe(DEMO_PO_ID);
+  db.close();
+});
+test("local runs persist their provider independently of later settings", async () => {
+  const db = openDb();
+  insertChatThread(db, { id: FIXTURE.thread, userId: FIXTURE.user, title: FIXTURE.title, createdAt: FIXTURE.now });
+  const port: BrowserAgentPort = {
+    prepare: () => Promise.resolve({ profileId: DEMO_PROFILE_ID, credentialRevision: FIXTURE.revision, credentialReference: FIXTURE.reference }),
+    start: () => Promise.resolve(FIXTURE.run), inspect: () => Promise.resolve({ status: "running" }),
+  };
+  const deps: AgentExecutionDeps = { db, port, provider: "local", loadAuthentication: () => ({ credentialReference: FIXTURE.reference, revision: FIXTURE.revision }) };
+  const started = startAgentExecution({ threadId: FIXTURE.thread, userId: FIXTURE.user, erpHost: DEMO_ERP_HOST, request: { instruction: DEMO_INSTRUCTION, completion_mode: AGENT.modes.draft } }, deps);
+  await started.completion;
+  expect(findAgentRun(db, { id: started.view.id, userId: FIXTURE.user })).toMatchObject({ provider: "local" });
+  expect(runView(db, findAgentRun(db, { id: started.view.id, userId: FIXTURE.user }))).toMatchObject({ provider: "local" });
+  db.close();
+});
 test("a completed draft with empty optional metadata persists its verified result", async () => {
   const db = openDb();
   insertChatThread(db, { id: FIXTURE.thread, userId: FIXTURE.user, title: FIXTURE.title, createdAt: FIXTURE.now });

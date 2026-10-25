@@ -97,6 +97,7 @@ export function openDb(path: string = IN_MEMORY_DB_PATH): Database {
   db.run(AGENT_SQL.schema);
   db.run(AGENT_SQL.sessions);
   db.run(AGENT_SQL.attempts);
+  migrateBrowserStorage(db);
   return db;
 }
 
@@ -239,3 +240,4 @@ export function listMemoryRows(db: Database, erpHost: string): MemoryEntry[] {
   const rows: unknown[] = db.query(QUERY_LIST_MEMORY).all(erpHost);
   return rows.map((row) => MemoryEntrySchema.parse(row));
 }
+import { migrateBrowserStorage } from "./browser-storage";

@@ -1,11 +1,13 @@
 import { landingTranslations } from "./landing-translations";
 import { modelTranslations } from "./model-translations";
 import { agentTranslations } from "./agent-translations";
+import { browserTranslations } from "./browser-translations";
 // Keep each entry in English, Hindi, Tamil order. Product and ERP field names are intentional literals.
 export const translations: [string, string, string][] = [
   ...landingTranslations,
   ...modelTranslations,
   ...agentTranslations,
+  ...browserTranslations,
   ["Account", "खाता", "கணக்கு"],
   ["Your ERP Fish sign-in details.", "ERP Fish में आपके लॉग इन की जानकारी।", "உங்கள் ERP Fish உள்நுழைவு விவரங்கள்."],
   ["Language", "भाषा", "மொழி"],

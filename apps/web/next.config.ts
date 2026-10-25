@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+
+const MONOREPO_ROOT = "../..";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "standalone",
+  outputFileTracingRoot: path.join(import.meta.dirname, MONOREPO_ROOT),
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

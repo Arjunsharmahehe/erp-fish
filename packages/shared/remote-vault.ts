@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ErpUrlSchema } from "./connection";
+import { HostedErpUrlSchema } from "./connection";
 import { MIN_TEXT_LENGTH } from "./base";
 
 export const REMOTE_VAULT = Object.freeze({
@@ -10,7 +10,7 @@ export const REMOTE_VAULT = Object.freeze({
   localOnly: "Saved local credentials are reserved for local browser execution. Remote sessions use TinyFish Vault.",
 });
 export const RemoteVaultBindingSchema = z.object({
-  user_id: z.uuid(), erp_url: ErpUrlSchema,
+  user_id: z.uuid(), erp_url: HostedErpUrlSchema,
   credential_item_id: z.string().trim().min(MIN_TEXT_LENGTH),
 }).strict();
 export const RemoteVaultBindingsSchema = z.array(RemoteVaultBindingSchema).refine(

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { MIN_TEXT_LENGTH } from "./base";
 import { OriginalMessageSchema } from "./language";
 import { AskQuestionSchema, MemoryDecisionSchema, LEARNING } from "./learning";
+import { BrowserProviderSchema } from "./browser";
 const MAX_DOCUMENT_TEXT = 60000;
 const MAX_INSTRUCTION = 12000;
 const MAX_SUMMARY = 12000;
@@ -44,6 +45,7 @@ export const AgentBrowserResultSchema = z.object({
 }).refine((value) => value.status !== "needs_input" || Boolean(value.question));
 export const AgentRunStatusSchema = z.enum([AGENT.statuses.preparing, AGENT.statuses.running, AGENT.statuses.waiting, AGENT.statuses.done, AGENT.statuses.failed, AGENT.statuses.uncertain]);
 export const AgentRunViewSchema = z.object({
+  provider: BrowserProviderSchema.default("tinyfish"),
   id: text, thread_id: text, erp_host: z.url(), instruction: text, completion_mode: CompletionModeSchema,
   status: AgentRunStatusSchema, provider_run_id: text.nullable(), summary: z.string(),
   records: z.array(AgentRecordSchema), question: text.nullable(), error: text.nullable(),
@@ -53,11 +55,11 @@ export const AgentRunViewSchema = z.object({
 export const AgentRunRowSchema = AgentRunViewSchema.omit({ records: true, completion_mode: true, instruction: true, choices: true }).extend({
   user_id: text, input_json: text, records_json: text, browser_profile_id: text.nullable(),
 });
-export const AgentSessionRowSchema = z.object({ thread_id: text, user_id: text, erp_host: z.url(), profile_id: text, credential_revision: text });
+export const AgentSessionRowSchema = z.object({ thread_id: text, user_id: text, erp_host: z.url(), profile_id: text, credential_revision: text, provider: BrowserProviderSchema.default("tinyfish") });
 export const AgentAttemptSchema = z.object({ job_id: text, provider_run_id: text, created_at: text });
 export const AgentAnswerSchema = z.object({ answer: text.max(LEARNING.maxText), original: OriginalMessageSchema.optional() });
 export const AgentResolveSchema = z.object({ erp_checked: z.literal(true), run_stopped: z.literal(true) }).strict();
-export const AgentStatusSchema = z.object({ ready: z.boolean(), erp_host: z.string().nullable(), message: text.nullable() });
+export const AgentStatusSchema = z.object({ ready: z.boolean(), erp_host: z.string().nullable(), message: text.nullable(), provider: BrowserProviderSchema.default("tinyfish") });
 export const PoOkResultSchema = z.object({ purchase_order_id: text });
 export const PoQuestionResultSchema = z.object({ question: text });
 export type AgentRunRequest = z.infer<typeof AgentRunRequestSchema>;

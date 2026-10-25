@@ -4,6 +4,7 @@ import { AGENT, AgentAttemptSchema, AgentRunRequestSchema, AgentRunRowSchema, Ag
 import { agentRunSql as SQL } from "./agent-run-sql";
 import { listLearningQuestions } from "./learning";
 import { agentQuestion } from "./agent-question";
+import { BROWSER, type BrowserProvider } from "shared";
 
 const CONFIG_MISSING = 404;
 const CONFIG_LIMIT = 30;
@@ -24,9 +25,9 @@ export function userRuns(db: Database, userId: string) { return AgentRunRowSchem
 export function connectionRuns(db: Database, scope: { userId: string; erpHost: string }) { return AgentRunRowSchema.array().parse(db.query(SQL.activeConnection).all(scope.userId, scope.erpHost)); }
 export function agentAttempts(db: Database, scope: { id: string; userId: string }) { return AgentAttemptSchema.array().parse(db.query(SQL.readAttempts).all(scope.id, scope.userId)); }
 export function activeRuns(db: Database, { threadId, userId }: { threadId: string; userId: string }) { return AgentRunRowSchema.array().parse(db.query(SQL.active).all(threadId, userId)); }
-export function insertAgentRun(db: Database, input: { threadId: string; userId: string; erpHost: string; request: AgentRunRequest }) {
+export function insertAgentRun(db: Database, input: { threadId: string; userId: string; erpHost: string; request: AgentRunRequest; provider?: BrowserProvider }) {
   const id = crypto.randomUUID(); const now = new Date().toISOString();
-  db.query(SQL.insert).run(id, input.threadId, input.userId, input.erpHost, JSON.stringify(input.request), AGENT.statuses.preparing, STORE.empty, STORE.records, now, now);
+  db.query(SQL.insert).run(id, input.threadId, input.userId, input.erpHost, JSON.stringify(input.request), AGENT.statuses.preparing, STORE.empty, STORE.records, now, now, input.provider ?? BROWSER.remote);
   return findAgentRun(db, { id: id, userId: input.userId });
 }
 export function updateAgentRun(db: Database, { row, update }: { row: AgentRunRow; update: Partial<Pick<AgentRunRow, "status" | "provider_run_id" | "browser_profile_id" | "summary" | "records_json" | "question" | "error">> }) {
@@ -40,5 +41,5 @@ export function storedAgentSession(db: Database, input: { threadId: string; user
   return row ? AgentSessionRowSchema.parse(row) : null;
 }
 export function saveAgentSession(db: Database, session: AgentSession) {
-  db.query(SQL.saveSession).run(session.thread_id, session.user_id, session.erp_host, session.profile_id, session.credential_revision);
+  db.query(SQL.saveSession).run(session.thread_id, session.user_id, session.erp_host, session.profile_id, session.credential_revision, session.provider);
 }

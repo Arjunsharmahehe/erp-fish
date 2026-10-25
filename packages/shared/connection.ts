@@ -4,15 +4,19 @@ const ZERO = 0;
 const HTTPS = "https:";
 const HTTP = "http:";
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
-const URL_ERROR = "Enter an HTTPS ERP URL (HTTP is allowed for localhost). Do not include credentials, a query, or a fragment.";
+export const ERP_URL_ERROR = "Enter an HTTPS ERP URL. Private HTTP endpoints are available in local deployments. Do not include credentials, a query, or a fragment.";
 const ROOT_PATH = "/";
 export const ErpUrlSchema = z.url().refine((value) => {
   const url = new URL(value);
-  return !url.username && !url.password && !url.search && !url.hash && (url.protocol === HTTPS || (url.protocol === HTTP && LOCAL_HOSTS.includes(url.hostname)));
-}, URL_ERROR).transform((value) => {
+  return !url.username && !url.password && !url.search && !url.hash && (url.protocol === HTTPS || url.protocol === HTTP);
+}, ERP_URL_ERROR).transform((value) => {
   const url = new URL(value);
   return url.pathname === ROOT_PATH ? url.origin : url.href;
 });
+export const HostedErpUrlSchema = ErpUrlSchema.refine((value) => {
+  const url = new URL(value);
+  return url.protocol === HTTPS || LOCAL_HOSTS.includes(url.hostname);
+}, ERP_URL_ERROR);
 export const ConnectionUpdateSchema = z.object({ erp_host: ErpUrlSchema }).strict();
 export const TinyProfileSchema = z.object({
   id: z.string().min(MIN), name: z.string(),
